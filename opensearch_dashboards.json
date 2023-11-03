@@ -1,14 +1,14 @@
 {
   "id": "kbnNetwork",
   "version": "1.0.0",
-  "opensearchDashboardsVersion": "2.7.0",
+  "opensearchDashboardsVersion": "2.11.0",
   "server": false,
   "ui": true,
   "requiredPlugins": [
     "visualizations",
     "data",
     "inspector",
-    "opensearchDashboardsLegacy",
+    "opensearchDashboardsReact",
     "opensearchDashboardsUtils",
     "visDefaultEditor",
     "share",

@@ -17,34 +17,21 @@
  * under the License.
  */
 
-import { some } from 'lodash';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { i18n } from '@osd/i18n';
 import { FormattedMessage } from '@osd/i18n/react';
 import {
-  EuiButtonEmpty,
-  EuiDragDropContext,
-  euiDragDropReorder,
-  EuiDroppable,
-  EuiFlexGroup,
-  EuiFlexItem,
-  EuiFormErrorText,
-  EuiIconTip,
   EuiPanel,
   EuiSpacer,
   EuiTitle,
   EuiSelect,
   EuiFormRow,
   EuiColorPicker,
-  EuiFieldNumber
 } from '@elastic/eui';
 
-import { IAggConfigs } from '../../../../src/plugins/data/public';
 import { VisOptionsProps } from '../../../../src/plugins/vis_default_editor/public';
 import { NumberInputOption } from './number_input';
 import { SwitchOption } from './switch';
-import { TextInputOption } from './text_input';
-import { totalAggregations, AggTypes } from './utils';
 
 
 export interface KbnNetworkVisParams {

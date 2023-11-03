@@ -196,1312 +196,115 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = "../../packages/kbn-optimizer/target/worker/entry_point_creator.js");
+/******/ 	return __webpack_require__(__webpack_require__.s = "../../packages/osd-optimizer/target/worker/entry_point_creator.js");
 /******/ })
 /************************************************************************/
 /******/ ({
 
-/***/ "../../node_modules/@elastic/filesaver/file-saver.js":
-/*!*********************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/@elastic/filesaver/file-saver.js ***!
-  \*********************************************************************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/* FileSaver.js
- * A saveAs() FileSaver implementation.
- * 1.1.20150716
- *
- * By Eli Grey, http://eligrey.com
- * License: X11/MIT
- *   See https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md
- */
-
-/*global self */
-/*jslint bitwise: true, indent: 4, laxbreak: true, laxcomma: true, smarttabs: true, plusplus: true */
-
-/*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/FileSaver.js */
-
-var saveAs = saveAs || (function(view) {
-	"use strict";
-	// IE <10 is explicitly unsupported
-	if (typeof navigator !== "undefined" && /MSIE [1-9]\./.test(navigator.userAgent)) {
-		return;
-	}
-	var
-		  doc = view.document
-		  // only get URL when necessary in case Blob.js hasn't overridden it yet
-		, get_URL = function() {
-			return view.URL || view.webkitURL || view;
-		}
-		, save_link = doc.createElementNS("http://www.w3.org/1999/xhtml", "a")
-		, can_use_save_link = "download" in save_link
-		, click = function(node) {
-			var event = new MouseEvent("click");
-			node.dispatchEvent(event);
-		}
-		, webkit_req_fs = view.webkitRequestFileSystem
-		, req_fs = view.requestFileSystem || webkit_req_fs || view.mozRequestFileSystem
-		, throw_outside = function(ex) {
-			(view.setImmediate || view.setTimeout)(function() {
-				throw ex;
-			}, 0);
-		}
-		, force_saveable_type = "application/octet-stream"
-		, fs_min_size = 0
-		// See https://code.google.com/p/chromium/issues/detail?id=375297#c7 and
-		// https://github.com/eligrey/FileSaver.js/commit/485930a#commitcomment-8768047
-		// for the reasoning behind the timeout and revocation flow
-		, arbitrary_revoke_timeout = 500 // in ms
-		, revoke = function(file) {
-			var revoker = function() {
-				if (typeof file === "string") { // file is an object URL
-					get_URL().revokeObjectURL(file);
-				} else { // file is a File
-					file.remove();
-				}
-			};
-			if (view.chrome) {
-				revoker();
-			} else {
-				setTimeout(revoker, arbitrary_revoke_timeout);
-			}
-		}
-		, dispatch = function(filesaver, event_types, event) {
-			event_types = [].concat(event_types);
-			var i = event_types.length;
-			while (i--) {
-				var listener = filesaver["on" + event_types[i]];
-				if (typeof listener === "function") {
-					try {
-						listener.call(filesaver, event || filesaver);
-					} catch (ex) {
-						throw_outside(ex);
-					}
-				}
-			}
-		}
-		, auto_bom = function(blob) {
-			// prepend BOM for UTF-8 XML and text/* types (including HTML)
-			if (/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(blob.type)) {
-				return new Blob(["\ufeff", blob], {type: blob.type});
-			}
-			return blob;
-		}
-		, FileSaver = function(blob, name, no_auto_bom) {
-			if (!no_auto_bom) {
-				blob = auto_bom(blob);
-			}
-			// First try a.download, then web filesystem, then object URLs
-			var
-				  filesaver = this
-				, type = blob.type
-				, blob_changed = false
-				, object_url
-				, target_view
-				, dispatch_all = function() {
-					dispatch(filesaver, "writestart progress write writeend".split(" "));
-				}
-				// on any filesys errors revert to saving with object URLs
-				, fs_error = function() {
-					// don't create more object URLs than needed
-					if (blob_changed || !object_url) {
-						object_url = get_URL().createObjectURL(blob);
-					}
-					if (target_view) {
-						target_view.location.href = object_url;
-					} else {
-						var new_tab = view.open(object_url, "_blank");
-						if (new_tab == undefined && typeof safari !== "undefined") {
-							//Apple do not allow window.open, see http://bit.ly/1kZffRI
-							view.location.href = object_url
-						}
-					}
-					filesaver.readyState = filesaver.DONE;
-					dispatch_all();
-					revoke(object_url);
-				}
-				, abortable = function(func) {
-					return function() {
-						if (filesaver.readyState !== filesaver.DONE) {
-							return func.apply(this, arguments);
-						}
-					};
-				}
-				, create_if_not_found = {create: true, exclusive: false}
-				, slice
-			;
-			filesaver.readyState = filesaver.INIT;
-			if (!name) {
-				name = "download";
-			}
-			if (can_use_save_link) {
-				object_url = get_URL().createObjectURL(blob);
-				save_link.href = object_url;
-				save_link.download = name;
-				setTimeout(function() {
-					click(save_link);
-					dispatch_all();
-					revoke(object_url);
-					filesaver.readyState = filesaver.DONE;
-				});
-				return;
-			}
-			// Object and web filesystem URLs have a problem saving in Google Chrome when
-			// viewed in a tab, so I force save with application/octet-stream
-			// http://code.google.com/p/chromium/issues/detail?id=91158
-			// Update: Google errantly closed 91158, I submitted it again:
-			// https://code.google.com/p/chromium/issues/detail?id=389642
-			if (view.chrome && type && type !== force_saveable_type) {
-				slice = blob.slice || blob.webkitSlice;
-				blob = slice.call(blob, 0, blob.size, force_saveable_type);
-				blob_changed = true;
-			}
-			// Since I can't be sure that the guessed media type will trigger a download
-			// in WebKit, I append .download to the filename.
-			// https://bugs.webkit.org/show_bug.cgi?id=65440
-			if (webkit_req_fs && name !== "download") {
-				name += ".download";
-			}
-			if (type === force_saveable_type || webkit_req_fs) {
-				target_view = view;
-			}
-			if (!req_fs) {
-				fs_error();
-				return;
-			}
-			fs_min_size += blob.size;
-			req_fs(view.TEMPORARY, fs_min_size, abortable(function(fs) {
-				fs.root.getDirectory("saved", create_if_not_found, abortable(function(dir) {
-					var save = function() {
-						dir.getFile(name, create_if_not_found, abortable(function(file) {
-							file.createWriter(abortable(function(writer) {
-								writer.onwriteend = function(event) {
-									target_view.location.href = file.toURL();
-									filesaver.readyState = filesaver.DONE;
-									dispatch(filesaver, "writeend", event);
-									revoke(file);
-								};
-								writer.onerror = function() {
-									var error = writer.error;
-									if (error.code !== error.ABORT_ERR) {
-										fs_error();
-									}
-								};
-								"writestart progress write abort".split(" ").forEach(function(event) {
-									writer["on" + event] = filesaver["on" + event];
-								});
-								writer.write(blob);
-								filesaver.abort = function() {
-									writer.abort();
-									filesaver.readyState = filesaver.DONE;
-								};
-								filesaver.readyState = filesaver.WRITING;
-							}), fs_error);
-						}), fs_error);
-					};
-					dir.getFile(name, {create: false}, abortable(function(file) {
-						// delete file if it already exists
-						file.remove();
-						save();
-					}), abortable(function(ex) {
-						if (ex.code === ex.NOT_FOUND_ERR) {
-							save();
-						} else {
-							fs_error();
-						}
-					}));
-				}), fs_error);
-			}), fs_error);
-		}
-		, FS_proto = FileSaver.prototype
-		, saveAs = function(blob, name, no_auto_bom) {
-			return new FileSaver(blob, name, no_auto_bom);
-		}
-	;
-	// IE 10+ (native saveAs)
-	if (typeof navigator !== "undefined" && navigator.msSaveOrOpenBlob) {
-		return function(blob, name, no_auto_bom) {
-			if (!no_auto_bom) {
-				blob = auto_bom(blob);
-			}
-			return navigator.msSaveOrOpenBlob(blob, name || "download");
-		};
-	}
-
-	FS_proto.abort = function() {
-		var filesaver = this;
-		filesaver.readyState = filesaver.DONE;
-		dispatch(filesaver, "abort");
-	};
-	FS_proto.readyState = FS_proto.INIT = 0;
-	FS_proto.WRITING = 1;
-	FS_proto.DONE = 2;
-
-	FS_proto.error =
-	FS_proto.onwritestart =
-	FS_proto.onprogress =
-	FS_proto.onwrite =
-	FS_proto.onabort =
-	FS_proto.onerror =
-	FS_proto.onwriteend =
-		null;
-
-	return saveAs;
-}(
-	   typeof self !== "undefined" && self
-	|| typeof window !== "undefined" && window
-	|| this.content
-));
-// `self` is undefined in Firefox for Android content script context
-// while `this` is nsIContentFrameMessageManager
-// with an attribute `content` that corresponds to the window
-
-if ( true && module.exports) {
-  module.exports.saveAs = saveAs;
-} else if (( true && __webpack_require__(/*! !webpack amd define */ "../../node_modules/webpack/buildin/amd-define.js") !== null) && (__webpack_require__(/*! !webpack amd options */ "../../node_modules/webpack/buildin/amd-options.js") != null)) {
-  !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
-    return saveAs;
-  }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-}
-
-
-/***/ }),
-
-/***/ "../../node_modules/angular-recursion/angular-recursion.js":
-/*!***************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/angular-recursion/angular-recursion.js ***!
-  \***************************************************************************************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-/* 
- * An Angular service which helps with creating recursive directives.
- * @author Mark Lagendijk
- * @license MIT
- */
-angular.module('RecursionHelper', []).factory('RecursionHelper', ['$compile', function($compile){
-	return {
-		/**
-		 * Manually compiles the element, fixing the recursion loop.
-		 * @param element
-		 * @param [link] A post-link function, or an object with function(s) registered via pre and post properties.
-		 * @returns An object containing the linking functions.
-		 */
-		compile: function(element, link){
-			// Normalize the link parameter
-			if(angular.isFunction(link)){
-				link = { post: link };
-			}
-
-			// Break the recursion loop by removing the contents
-			var contents = element.contents().remove();
-			var compiledContents;
-			return {
-				pre: (link && link.pre) ? link.pre : null,
-				/**
-				 * Compiles and re-adds the contents
-				 */
-				post: function(scope, element){
-					// Compile the contents
-					if(!compiledContents){
-						compiledContents = $compile(contents);
-					}
-					// Re-add the compiled contents to the element
-					compiledContents(scope, function(clone){
-						element.append(clone);
-					});
-
-					// Call the post-linking function, if any
-					if(link && link.post){
-						link.post.apply(null, arguments);
-					}
-				}
-			};
-		}
-	};
-}]);
-
-/***/ }),
-
-/***/ "../../node_modules/angular-sanitize/angular-sanitize.js":
-/*!*************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/angular-sanitize/angular-sanitize.js ***!
-  \*************************************************************************************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-/**
- * @license AngularJS v1.8.0
- * (c) 2010-2020 Google, Inc. http://angularjs.org
- * License: MIT
- */
-(function(window, angular) {'use strict';
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *     Any commits to this file should be reviewed with security in mind.  *
- *   Changes to this file can potentially create security vulnerabilities. *
- *          An approval from 2 Core members with history of modifying      *
- *                         this file is required.                          *
- *                                                                         *
- *  Does the change somehow allow for arbitrary javascript to be executed? *
- *    Or allows for someone to change the prototype of built-in objects?   *
- *     Or gives undesired access to variables likes document or window?    *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-var $sanitizeMinErr = angular.$$minErr('$sanitize');
-var bind;
-var extend;
-var forEach;
-var isArray;
-var isDefined;
-var lowercase;
-var noop;
-var nodeContains;
-var htmlParser;
-var htmlSanitizeWriter;
-
-/**
- * @ngdoc module
- * @name ngSanitize
- * @description
- *
- * The `ngSanitize` module provides functionality to sanitize HTML.
- *
- * See {@link ngSanitize.$sanitize `$sanitize`} for usage.
- */
-
-/**
- * @ngdoc service
- * @name $sanitize
- * @kind function
- *
- * @description
- *   Sanitizes an html string by stripping all potentially dangerous tokens.
- *
- *   The input is sanitized by parsing the HTML into tokens. All safe tokens (from a whitelist) are
- *   then serialized back to a properly escaped HTML string. This means that no unsafe input can make
- *   it into the returned string.
- *
- *   The whitelist for URL sanitization of attribute values is configured using the functions
- *   `aHrefSanitizationWhitelist` and `imgSrcSanitizationWhitelist` of {@link $compileProvider}.
- *
- *   The input may also contain SVG markup if this is enabled via {@link $sanitizeProvider}.
- *
- * @param {string} html HTML input.
- * @returns {string} Sanitized HTML.
- *
- * @example
-   <example module="sanitizeExample" deps="angular-sanitize.js" name="sanitize-service">
-   <file name="index.html">
-     <script>
-         angular.module('sanitizeExample', ['ngSanitize'])
-           .controller('ExampleController', ['$scope', '$sce', function($scope, $sce) {
-             $scope.snippet =
-               '<p style="color:blue">an html\n' +
-               '<em onmouseover="this.textContent=\'PWN3D!\'">click here</em>\n' +
-               'snippet</p>';
-             $scope.deliberatelyTrustDangerousSnippet = function() {
-               return $sce.trustAsHtml($scope.snippet);
-             };
-           }]);
-     </script>
-     <div ng-controller="ExampleController">
-        Snippet: <textarea ng-model="snippet" cols="60" rows="3"></textarea>
-       <table>
-         <tr>
-           <td>Directive</td>
-           <td>How</td>
-           <td>Source</td>
-           <td>Rendered</td>
-         </tr>
-         <tr id="bind-html-with-sanitize">
-           <td>ng-bind-html</td>
-           <td>Automatically uses $sanitize</td>
-           <td><pre>&lt;div ng-bind-html="snippet"&gt;<br/>&lt;/div&gt;</pre></td>
-           <td><div ng-bind-html="snippet"></div></td>
-         </tr>
-         <tr id="bind-html-with-trust">
-           <td>ng-bind-html</td>
-           <td>Bypass $sanitize by explicitly trusting the dangerous value</td>
-           <td>
-           <pre>&lt;div ng-bind-html="deliberatelyTrustDangerousSnippet()"&gt;
-&lt;/div&gt;</pre>
-           </td>
-           <td><div ng-bind-html="deliberatelyTrustDangerousSnippet()"></div></td>
-         </tr>
-         <tr id="bind-default">
-           <td>ng-bind</td>
-           <td>Automatically escapes</td>
-           <td><pre>&lt;div ng-bind="snippet"&gt;<br/>&lt;/div&gt;</pre></td>
-           <td><div ng-bind="snippet"></div></td>
-         </tr>
-       </table>
-       </div>
-   </file>
-   <file name="protractor.js" type="protractor">
-     it('should sanitize the html snippet by default', function() {
-       expect(element(by.css('#bind-html-with-sanitize div')).getAttribute('innerHTML')).
-         toBe('<p>an html\n<em>click here</em>\nsnippet</p>');
-     });
-
-     it('should inline raw snippet if bound to a trusted value', function() {
-       expect(element(by.css('#bind-html-with-trust div')).getAttribute('innerHTML')).
-         toBe("<p style=\"color:blue\">an html\n" +
-              "<em onmouseover=\"this.textContent='PWN3D!'\">click here</em>\n" +
-              "snippet</p>");
-     });
-
-     it('should escape snippet without any filter', function() {
-       expect(element(by.css('#bind-default div')).getAttribute('innerHTML')).
-         toBe("&lt;p style=\"color:blue\"&gt;an html\n" +
-              "&lt;em onmouseover=\"this.textContent='PWN3D!'\"&gt;click here&lt;/em&gt;\n" +
-              "snippet&lt;/p&gt;");
-     });
-
-     it('should update', function() {
-       element(by.model('snippet')).clear();
-       element(by.model('snippet')).sendKeys('new <b onclick="alert(1)">text</b>');
-       expect(element(by.css('#bind-html-with-sanitize div')).getAttribute('innerHTML')).
-         toBe('new <b>text</b>');
-       expect(element(by.css('#bind-html-with-trust div')).getAttribute('innerHTML')).toBe(
-         'new <b onclick="alert(1)">text</b>');
-       expect(element(by.css('#bind-default div')).getAttribute('innerHTML')).toBe(
-         "new &lt;b onclick=\"alert(1)\"&gt;text&lt;/b&gt;");
-     });
-   </file>
-   </example>
- */
-
-
-/**
- * @ngdoc provider
- * @name $sanitizeProvider
- * @this
- *
- * @description
- * Creates and configures {@link $sanitize} instance.
- */
-function $SanitizeProvider() {
-  var hasBeenInstantiated = false;
-  var svgEnabled = false;
-
-  this.$get = ['$$sanitizeUri', function($$sanitizeUri) {
-    hasBeenInstantiated = true;
-    if (svgEnabled) {
-      extend(validElements, svgElements);
-    }
-    return function(html) {
-      var buf = [];
-      htmlParser(html, htmlSanitizeWriter(buf, function(uri, isImage) {
-        return !/^unsafe:/.test($$sanitizeUri(uri, isImage));
-      }));
-      return buf.join('');
-    };
-  }];
-
-
-  /**
-   * @ngdoc method
-   * @name $sanitizeProvider#enableSvg
-   * @kind function
-   *
-   * @description
-   * Enables a subset of svg to be supported by the sanitizer.
-   *
-   * <div class="alert alert-warning">
-   *   <p>By enabling this setting without taking other precautions, you might expose your
-   *   application to click-hijacking attacks. In these attacks, sanitized svg elements could be positioned
-   *   outside of the containing element and be rendered over other elements on the page (e.g. a login
-   *   link). Such behavior can then result in phishing incidents.</p>
-   *
-   *   <p>To protect against these, explicitly setup `overflow: hidden` css rule for all potential svg
-   *   tags within the sanitized content:</p>
-   *
-   *   <br>
-   *
-   *   <pre><code>
-   *   .rootOfTheIncludedContent svg {
-   *     overflow: hidden !important;
-   *   }
-   *   </code></pre>
-   * </div>
-   *
-   * @param {boolean=} flag Enable or disable SVG support in the sanitizer.
-   * @returns {boolean|$sanitizeProvider} Returns the currently configured value if called
-   *    without an argument or self for chaining otherwise.
-   */
-  this.enableSvg = function(enableSvg) {
-    if (isDefined(enableSvg)) {
-      svgEnabled = enableSvg;
-      return this;
-    } else {
-      return svgEnabled;
-    }
-  };
-
-
-  /**
-   * @ngdoc method
-   * @name $sanitizeProvider#addValidElements
-   * @kind function
-   *
-   * @description
-   * Extends the built-in lists of valid HTML/SVG elements, i.e. elements that are considered safe
-   * and are not stripped off during sanitization. You can extend the following lists of elements:
-   *
-   * - `htmlElements`: A list of elements (tag names) to extend the current list of safe HTML
-   *   elements. HTML elements considered safe will not be removed during sanitization. All other
-   *   elements will be stripped off.
-   *
-   * - `htmlVoidElements`: This is similar to `htmlElements`, but marks the elements as
-   *   "void elements" (similar to HTML
-   *   [void elements](https://rawgit.com/w3c/html/html5.1-2/single-page.html#void-elements)). These
-   *   elements have no end tag and cannot have content.
-   *
-   * - `svgElements`: This is similar to `htmlElements`, but for SVG elements. This list is only
-   *   taken into account if SVG is {@link ngSanitize.$sanitizeProvider#enableSvg enabled} for
-   *   `$sanitize`.
-   *
-   * <div class="alert alert-info">
-   *   This method must be called during the {@link angular.Module#config config} phase. Once the
-   *   `$sanitize` service has been instantiated, this method has no effect.
-   * </div>
-   *
-   * <div class="alert alert-warning">
-   *   Keep in mind that extending the built-in lists of elements may expose your app to XSS or
-   *   other vulnerabilities. Be very mindful of the elements you add.
-   * </div>
-   *
-   * @param {Array<String>|Object} elements - A list of valid HTML elements or an object with one or
-   *   more of the following properties:
-   *   - **htmlElements** - `{Array<String>}` - A list of elements to extend the current list of
-   *     HTML elements.
-   *   - **htmlVoidElements** - `{Array<String>}` - A list of elements to extend the current list of
-   *     void HTML elements; i.e. elements that do not have an end tag.
-   *   - **svgElements** - `{Array<String>}` - A list of elements to extend the current list of SVG
-   *     elements. The list of SVG elements is only taken into account if SVG is
-   *     {@link ngSanitize.$sanitizeProvider#enableSvg enabled} for `$sanitize`.
-   *
-   * Passing an array (`[...]`) is equivalent to passing `{htmlElements: [...]}`.
-   *
-   * @return {$sanitizeProvider} Returns self for chaining.
-   */
-  this.addValidElements = function(elements) {
-    if (!hasBeenInstantiated) {
-      if (isArray(elements)) {
-        elements = {htmlElements: elements};
-      }
-
-      addElementsTo(svgElements, elements.svgElements);
-      addElementsTo(voidElements, elements.htmlVoidElements);
-      addElementsTo(validElements, elements.htmlVoidElements);
-      addElementsTo(validElements, elements.htmlElements);
-    }
-
-    return this;
-  };
-
-
-  /**
-   * @ngdoc method
-   * @name $sanitizeProvider#addValidAttrs
-   * @kind function
-   *
-   * @description
-   * Extends the built-in list of valid attributes, i.e. attributes that are considered safe and are
-   * not stripped off during sanitization.
-   *
-   * **Note**:
-   * The new attributes will not be treated as URI attributes, which means their values will not be
-   * sanitized as URIs using `$compileProvider`'s
-   * {@link ng.$compileProvider#aHrefSanitizationWhitelist aHrefSanitizationWhitelist} and
-   * {@link ng.$compileProvider#imgSrcSanitizationWhitelist imgSrcSanitizationWhitelist}.
-   *
-   * <div class="alert alert-info">
-   *   This method must be called during the {@link angular.Module#config config} phase. Once the
-   *   `$sanitize` service has been instantiated, this method has no effect.
-   * </div>
-   *
-   * <div class="alert alert-warning">
-   *   Keep in mind that extending the built-in list of attributes may expose your app to XSS or
-   *   other vulnerabilities. Be very mindful of the attributes you add.
-   * </div>
-   *
-   * @param {Array<String>} attrs - A list of valid attributes.
-   *
-   * @returns {$sanitizeProvider} Returns self for chaining.
-   */
-  this.addValidAttrs = function(attrs) {
-    if (!hasBeenInstantiated) {
-      extend(validAttrs, arrayToMap(attrs, true));
-    }
-    return this;
-  };
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // Private stuff
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-
-  bind = angular.bind;
-  extend = angular.extend;
-  forEach = angular.forEach;
-  isArray = angular.isArray;
-  isDefined = angular.isDefined;
-  lowercase = angular.$$lowercase;
-  noop = angular.noop;
-
-  htmlParser = htmlParserImpl;
-  htmlSanitizeWriter = htmlSanitizeWriterImpl;
-
-  nodeContains = window.Node.prototype.contains || /** @this */ function(arg) {
-    // eslint-disable-next-line no-bitwise
-    return !!(this.compareDocumentPosition(arg) & 16);
-  };
-
-  // Regular Expressions for parsing tags and attributes
-  var SURROGATE_PAIR_REGEXP = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g,
-    // Match everything outside of normal chars and " (quote character)
-    NON_ALPHANUMERIC_REGEXP = /([^#-~ |!])/g;
-
-
-  // Good source of info about elements and attributes
-  // http://dev.w3.org/html5/spec/Overview.html#semantics
-  // http://simon.html5.org/html-elements
-
-  // Safe Void Elements - HTML5
-  // http://dev.w3.org/html5/spec/Overview.html#void-elements
-  var voidElements = stringToMap('area,br,col,hr,img,wbr');
-
-  // Elements that you can, intentionally, leave open (and which close themselves)
-  // http://dev.w3.org/html5/spec/Overview.html#optional-tags
-  var optionalEndTagBlockElements = stringToMap('colgroup,dd,dt,li,p,tbody,td,tfoot,th,thead,tr'),
-      optionalEndTagInlineElements = stringToMap('rp,rt'),
-      optionalEndTagElements = extend({},
-                                              optionalEndTagInlineElements,
-                                              optionalEndTagBlockElements);
-
-  // Safe Block Elements - HTML5
-  var blockElements = extend({}, optionalEndTagBlockElements, stringToMap('address,article,' +
-          'aside,blockquote,caption,center,del,dir,div,dl,figure,figcaption,footer,h1,h2,h3,h4,h5,' +
-          'h6,header,hgroup,hr,ins,map,menu,nav,ol,pre,section,table,ul'));
-
-  // Inline Elements - HTML5
-  var inlineElements = extend({}, optionalEndTagInlineElements, stringToMap('a,abbr,acronym,b,' +
-          'bdi,bdo,big,br,cite,code,del,dfn,em,font,i,img,ins,kbd,label,map,mark,q,ruby,rp,rt,s,' +
-          'samp,small,span,strike,strong,sub,sup,time,tt,u,var'));
-
-  // SVG Elements
-  // https://wiki.whatwg.org/wiki/Sanitization_rules#svg_Elements
-  // Note: the elements animate,animateColor,animateMotion,animateTransform,set are intentionally omitted.
-  // They can potentially allow for arbitrary javascript to be executed. See #11290
-  var svgElements = stringToMap('circle,defs,desc,ellipse,font-face,font-face-name,font-face-src,g,glyph,' +
-          'hkern,image,linearGradient,line,marker,metadata,missing-glyph,mpath,path,polygon,polyline,' +
-          'radialGradient,rect,stop,svg,switch,text,title,tspan');
-
-  // Blocked Elements (will be stripped)
-  var blockedElements = stringToMap('script,style');
-
-  var validElements = extend({},
-                                     voidElements,
-                                     blockElements,
-                                     inlineElements,
-                                     optionalEndTagElements);
-
-  //Attributes that have href and hence need to be sanitized
-  var uriAttrs = stringToMap('background,cite,href,longdesc,src,xlink:href,xml:base');
-
-  var htmlAttrs = stringToMap('abbr,align,alt,axis,bgcolor,border,cellpadding,cellspacing,class,clear,' +
-      'color,cols,colspan,compact,coords,dir,face,headers,height,hreflang,hspace,' +
-      'ismap,lang,language,nohref,nowrap,rel,rev,rows,rowspan,rules,' +
-      'scope,scrolling,shape,size,span,start,summary,tabindex,target,title,type,' +
-      'valign,value,vspace,width');
-
-  // SVG attributes (without "id" and "name" attributes)
-  // https://wiki.whatwg.org/wiki/Sanitization_rules#svg_Attributes
-  var svgAttrs = stringToMap('accent-height,accumulate,additive,alphabetic,arabic-form,ascent,' +
-      'baseProfile,bbox,begin,by,calcMode,cap-height,class,color,color-rendering,content,' +
-      'cx,cy,d,dx,dy,descent,display,dur,end,fill,fill-rule,font-family,font-size,font-stretch,' +
-      'font-style,font-variant,font-weight,from,fx,fy,g1,g2,glyph-name,gradientUnits,hanging,' +
-      'height,horiz-adv-x,horiz-origin-x,ideographic,k,keyPoints,keySplines,keyTimes,lang,' +
-      'marker-end,marker-mid,marker-start,markerHeight,markerUnits,markerWidth,mathematical,' +
-      'max,min,offset,opacity,orient,origin,overline-position,overline-thickness,panose-1,' +
-      'path,pathLength,points,preserveAspectRatio,r,refX,refY,repeatCount,repeatDur,' +
-      'requiredExtensions,requiredFeatures,restart,rotate,rx,ry,slope,stemh,stemv,stop-color,' +
-      'stop-opacity,strikethrough-position,strikethrough-thickness,stroke,stroke-dasharray,' +
-      'stroke-dashoffset,stroke-linecap,stroke-linejoin,stroke-miterlimit,stroke-opacity,' +
-      'stroke-width,systemLanguage,target,text-anchor,to,transform,type,u1,u2,underline-position,' +
-      'underline-thickness,unicode,unicode-range,units-per-em,values,version,viewBox,visibility,' +
-      'width,widths,x,x-height,x1,x2,xlink:actuate,xlink:arcrole,xlink:role,xlink:show,xlink:title,' +
-      'xlink:type,xml:base,xml:lang,xml:space,xmlns,xmlns:xlink,y,y1,y2,zoomAndPan', true);
-
-  var validAttrs = extend({},
-                                  uriAttrs,
-                                  svgAttrs,
-                                  htmlAttrs);
-
-  function stringToMap(str, lowercaseKeys) {
-    return arrayToMap(str.split(','), lowercaseKeys);
-  }
-
-  function arrayToMap(items, lowercaseKeys) {
-    var obj = {}, i;
-    for (i = 0; i < items.length; i++) {
-      obj[lowercaseKeys ? lowercase(items[i]) : items[i]] = true;
-    }
-    return obj;
-  }
-
-  function addElementsTo(elementsMap, newElements) {
-    if (newElements && newElements.length) {
-      extend(elementsMap, arrayToMap(newElements));
-    }
-  }
-
-  /**
-   * Create an inert document that contains the dirty HTML that needs sanitizing
-   * Depending upon browser support we use one of three strategies for doing this.
-   * Support: Safari 10.x -> XHR strategy
-   * Support: Firefox -> DomParser strategy
-   */
-  var getInertBodyElement /* function(html: string): HTMLBodyElement */ = (function(window, document) {
-    var inertDocument;
-    if (document && document.implementation) {
-      inertDocument = document.implementation.createHTMLDocument('inert');
-    } else {
-      throw $sanitizeMinErr('noinert', 'Can\'t create an inert html document');
-    }
-    var inertBodyElement = (inertDocument.documentElement || inertDocument.getDocumentElement()).querySelector('body');
-
-    // Check for the Safari 10.1 bug - which allows JS to run inside the SVG G element
-    inertBodyElement.innerHTML = '<svg><g onload="this.parentNode.remove()"></g></svg>';
-    if (!inertBodyElement.querySelector('svg')) {
-      return getInertBodyElement_XHR;
-    } else {
-      // Check for the Firefox bug - which prevents the inner img JS from being sanitized
-      inertBodyElement.innerHTML = '<svg><p><style><img src="</style><img src=x onerror=alert(1)//">';
-      if (inertBodyElement.querySelector('svg img')) {
-        return getInertBodyElement_DOMParser;
-      } else {
-        return getInertBodyElement_InertDocument;
-      }
-    }
-
-    function getInertBodyElement_XHR(html) {
-      // We add this dummy element to ensure that the rest of the content is parsed as expected
-      // e.g. leading whitespace is maintained and tags like `<meta>` do not get hoisted to the `<head>` tag.
-      html = '<remove></remove>' + html;
-      try {
-        html = encodeURI(html);
-      } catch (e) {
-        return undefined;
-      }
-      var xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'document';
-      xhr.open('GET', 'data:text/html;charset=utf-8,' + html, false);
-      xhr.send(null);
-      var body = xhr.response.body;
-      body.firstChild.remove();
-      return body;
-    }
-
-    function getInertBodyElement_DOMParser(html) {
-      // We add this dummy element to ensure that the rest of the content is parsed as expected
-      // e.g. leading whitespace is maintained and tags like `<meta>` do not get hoisted to the `<head>` tag.
-      html = '<remove></remove>' + html;
-      try {
-        var body = new window.DOMParser().parseFromString(html, 'text/html').body;
-        body.firstChild.remove();
-        return body;
-      } catch (e) {
-        return undefined;
-      }
-    }
-
-    function getInertBodyElement_InertDocument(html) {
-      inertBodyElement.innerHTML = html;
-
-      // Support: IE 9-11 only
-      // strip custom-namespaced attributes on IE<=11
-      if (document.documentMode) {
-        stripCustomNsAttrs(inertBodyElement);
-      }
-
-      return inertBodyElement;
-    }
-  })(window, window.document);
-
-  /**
-   * @example
-   * htmlParser(htmlString, {
-   *     start: function(tag, attrs) {},
-   *     end: function(tag) {},
-   *     chars: function(text) {},
-   *     comment: function(text) {}
-   * });
-   *
-   * @param {string} html string
-   * @param {object} handler
-   */
-  function htmlParserImpl(html, handler) {
-    if (html === null || html === undefined) {
-      html = '';
-    } else if (typeof html !== 'string') {
-      html = '' + html;
-    }
-
-    var inertBodyElement = getInertBodyElement(html);
-    if (!inertBodyElement) return '';
-
-    //mXSS protection
-    var mXSSAttempts = 5;
-    do {
-      if (mXSSAttempts === 0) {
-        throw $sanitizeMinErr('uinput', 'Failed to sanitize html because the input is unstable');
-      }
-      mXSSAttempts--;
-
-      // trigger mXSS if it is going to happen by reading and writing the innerHTML
-      html = inertBodyElement.innerHTML;
-      inertBodyElement = getInertBodyElement(html);
-    } while (html !== inertBodyElement.innerHTML);
-
-    var node = inertBodyElement.firstChild;
-    while (node) {
-      switch (node.nodeType) {
-        case 1: // ELEMENT_NODE
-          handler.start(node.nodeName.toLowerCase(), attrToMap(node.attributes));
-          break;
-        case 3: // TEXT NODE
-          handler.chars(node.textContent);
-          break;
-      }
-
-      var nextNode;
-      if (!(nextNode = node.firstChild)) {
-        if (node.nodeType === 1) {
-          handler.end(node.nodeName.toLowerCase());
-        }
-        nextNode = getNonDescendant('nextSibling', node);
-        if (!nextNode) {
-          while (nextNode == null) {
-            node = getNonDescendant('parentNode', node);
-            if (node === inertBodyElement) break;
-            nextNode = getNonDescendant('nextSibling', node);
-            if (node.nodeType === 1) {
-              handler.end(node.nodeName.toLowerCase());
-            }
-          }
-        }
-      }
-      node = nextNode;
-    }
-
-    while ((node = inertBodyElement.firstChild)) {
-      inertBodyElement.removeChild(node);
-    }
-  }
-
-  function attrToMap(attrs) {
-    var map = {};
-    for (var i = 0, ii = attrs.length; i < ii; i++) {
-      var attr = attrs[i];
-      map[attr.name] = attr.value;
-    }
-    return map;
-  }
-
-
-  /**
-   * Escapes all potentially dangerous characters, so that the
-   * resulting string can be safely inserted into attribute or
-   * element text.
-   * @param value
-   * @returns {string} escaped text
-   */
-  function encodeEntities(value) {
-    return value.
-      replace(/&/g, '&amp;').
-      replace(SURROGATE_PAIR_REGEXP, function(value) {
-        var hi = value.charCodeAt(0);
-        var low = value.charCodeAt(1);
-        return '&#' + (((hi - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000) + ';';
-      }).
-      replace(NON_ALPHANUMERIC_REGEXP, function(value) {
-        return '&#' + value.charCodeAt(0) + ';';
-      }).
-      replace(/</g, '&lt;').
-      replace(/>/g, '&gt;');
-  }
-
-  /**
-   * create an HTML/XML writer which writes to buffer
-   * @param {Array} buf use buf.join('') to get out sanitized html string
-   * @returns {object} in the form of {
-   *     start: function(tag, attrs) {},
-   *     end: function(tag) {},
-   *     chars: function(text) {},
-   *     comment: function(text) {}
-   * }
-   */
-  function htmlSanitizeWriterImpl(buf, uriValidator) {
-    var ignoreCurrentElement = false;
-    var out = bind(buf, buf.push);
-    return {
-      start: function(tag, attrs) {
-        tag = lowercase(tag);
-        if (!ignoreCurrentElement && blockedElements[tag]) {
-          ignoreCurrentElement = tag;
-        }
-        if (!ignoreCurrentElement && validElements[tag] === true) {
-          out('<');
-          out(tag);
-          forEach(attrs, function(value, key) {
-            var lkey = lowercase(key);
-            var isImage = (tag === 'img' && lkey === 'src') || (lkey === 'background');
-            if (validAttrs[lkey] === true &&
-              (uriAttrs[lkey] !== true || uriValidator(value, isImage))) {
-              out(' ');
-              out(key);
-              out('="');
-              out(encodeEntities(value));
-              out('"');
-            }
-          });
-          out('>');
-        }
-      },
-      end: function(tag) {
-        tag = lowercase(tag);
-        if (!ignoreCurrentElement && validElements[tag] === true && voidElements[tag] !== true) {
-          out('</');
-          out(tag);
-          out('>');
-        }
-        // eslint-disable-next-line eqeqeq
-        if (tag == ignoreCurrentElement) {
-          ignoreCurrentElement = false;
-        }
-      },
-      chars: function(chars) {
-        if (!ignoreCurrentElement) {
-          out(encodeEntities(chars));
-        }
-      }
-    };
-  }
-
-
-  /**
-   * When IE9-11 comes across an unknown namespaced attribute e.g. 'xlink:foo' it adds 'xmlns:ns1' attribute to declare
-   * ns1 namespace and prefixes the attribute with 'ns1' (e.g. 'ns1:xlink:foo'). This is undesirable since we don't want
-   * to allow any of these custom attributes. This method strips them all.
-   *
-   * @param node Root element to process
-   */
-  function stripCustomNsAttrs(node) {
-    while (node) {
-      if (node.nodeType === window.Node.ELEMENT_NODE) {
-        var attrs = node.attributes;
-        for (var i = 0, l = attrs.length; i < l; i++) {
-          var attrNode = attrs[i];
-          var attrName = attrNode.name.toLowerCase();
-          if (attrName === 'xmlns:ns1' || attrName.lastIndexOf('ns1:', 0) === 0) {
-            node.removeAttributeNode(attrNode);
-            i--;
-            l--;
-          }
-        }
-      }
-
-      var nextNode = node.firstChild;
-      if (nextNode) {
-        stripCustomNsAttrs(nextNode);
-      }
-
-      node = getNonDescendant('nextSibling', node);
-    }
-  }
-
-  function getNonDescendant(propName, node) {
-    // An element is clobbered if its `propName` property points to one of its descendants
-    var nextNode = node[propName];
-    if (nextNode && nodeContains.call(node, nextNode)) {
-      throw $sanitizeMinErr('elclob', 'Failed to sanitize html because the element is clobbered: {0}', node.outerHTML || node.outerText);
-    }
-    return nextNode;
-  }
-}
-
-function sanitizeText(chars) {
-  var buf = [];
-  var writer = htmlSanitizeWriter(buf, noop);
-  writer.chars(chars);
-  return buf.join('');
-}
-
-
-// define ngSanitize module and register $sanitize service
-angular.module('ngSanitize', [])
-  .provider('$sanitize', $SanitizeProvider)
-  .info({ angularVersion: '1.8.0' });
-
-/**
- * @ngdoc filter
- * @name linky
- * @kind function
- *
- * @description
- * Finds links in text input and turns them into html links. Supports `http/https/ftp/sftp/mailto` and
- * plain email address links.
- *
- * Requires the {@link ngSanitize `ngSanitize`} module to be installed.
- *
- * @param {string} text Input text.
- * @param {string} [target] Window (`_blank|_self|_parent|_top`) or named frame to open links in.
- * @param {object|function(url)} [attributes] Add custom attributes to the link element.
- *
- *    Can be one of:
- *
- *    - `object`: A map of attributes
- *    - `function`: Takes the url as a parameter and returns a map of attributes
- *
- *    If the map of attributes contains a value for `target`, it overrides the value of
- *    the target parameter.
- *
- *
- * @returns {string} Html-linkified and {@link $sanitize sanitized} text.
- *
- * @usage
-   <span ng-bind-html="linky_expression | linky"></span>
- *
- * @example
-   <example module="linkyExample" deps="angular-sanitize.js" name="linky-filter">
-     <file name="index.html">
-       <div ng-controller="ExampleController">
-       Snippet: <textarea ng-model="snippet" cols="60" rows="3"></textarea>
-       <table>
-         <tr>
-           <th>Filter</th>
-           <th>Source</th>
-           <th>Rendered</th>
-         </tr>
-         <tr id="linky-filter">
-           <td>linky filter</td>
-           <td>
-             <pre>&lt;div ng-bind-html="snippet | linky"&gt;<br>&lt;/div&gt;</pre>
-           </td>
-           <td>
-             <div ng-bind-html="snippet | linky"></div>
-           </td>
-         </tr>
-         <tr id="linky-target">
-          <td>linky target</td>
-          <td>
-            <pre>&lt;div ng-bind-html="snippetWithSingleURL | linky:'_blank'"&gt;<br>&lt;/div&gt;</pre>
-          </td>
-          <td>
-            <div ng-bind-html="snippetWithSingleURL | linky:'_blank'"></div>
-          </td>
-         </tr>
-         <tr id="linky-custom-attributes">
-          <td>linky custom attributes</td>
-          <td>
-            <pre>&lt;div ng-bind-html="snippetWithSingleURL | linky:'_self':{rel: 'nofollow'}"&gt;<br>&lt;/div&gt;</pre>
-          </td>
-          <td>
-            <div ng-bind-html="snippetWithSingleURL | linky:'_self':{rel: 'nofollow'}"></div>
-          </td>
-         </tr>
-         <tr id="escaped-html">
-           <td>no filter</td>
-           <td><pre>&lt;div ng-bind="snippet"&gt;<br>&lt;/div&gt;</pre></td>
-           <td><div ng-bind="snippet"></div></td>
-         </tr>
-       </table>
-     </file>
-     <file name="script.js">
-       angular.module('linkyExample', ['ngSanitize'])
-         .controller('ExampleController', ['$scope', function($scope) {
-           $scope.snippet =
-             'Pretty text with some links:\n' +
-             'http://angularjs.org/,\n' +
-             'mailto:us@somewhere.org,\n' +
-             'another@somewhere.org,\n' +
-             'and one more: ftp://127.0.0.1/.';
-           $scope.snippetWithSingleURL = 'http://angularjs.org/';
-         }]);
-     </file>
-     <file name="protractor.js" type="protractor">
-       it('should linkify the snippet with urls', function() {
-         expect(element(by.id('linky-filter')).element(by.binding('snippet | linky')).getText()).
-             toBe('Pretty text with some links: http://angularjs.org/, us@somewhere.org, ' +
-                  'another@somewhere.org, and one more: ftp://127.0.0.1/.');
-         expect(element.all(by.css('#linky-filter a')).count()).toEqual(4);
-       });
-
-       it('should not linkify snippet without the linky filter', function() {
-         expect(element(by.id('escaped-html')).element(by.binding('snippet')).getText()).
-             toBe('Pretty text with some links: http://angularjs.org/, mailto:us@somewhere.org, ' +
-                  'another@somewhere.org, and one more: ftp://127.0.0.1/.');
-         expect(element.all(by.css('#escaped-html a')).count()).toEqual(0);
-       });
-
-       it('should update', function() {
-         element(by.model('snippet')).clear();
-         element(by.model('snippet')).sendKeys('new http://link.');
-         expect(element(by.id('linky-filter')).element(by.binding('snippet | linky')).getText()).
-             toBe('new http://link.');
-         expect(element.all(by.css('#linky-filter a')).count()).toEqual(1);
-         expect(element(by.id('escaped-html')).element(by.binding('snippet')).getText())
-             .toBe('new http://link.');
-       });
-
-       it('should work with the target property', function() {
-        expect(element(by.id('linky-target')).
-            element(by.binding("snippetWithSingleURL | linky:'_blank'")).getText()).
-            toBe('http://angularjs.org/');
-        expect(element(by.css('#linky-target a')).getAttribute('target')).toEqual('_blank');
-       });
-
-       it('should optionally add custom attributes', function() {
-        expect(element(by.id('linky-custom-attributes')).
-            element(by.binding("snippetWithSingleURL | linky:'_self':{rel: 'nofollow'}")).getText()).
-            toBe('http://angularjs.org/');
-        expect(element(by.css('#linky-custom-attributes a')).getAttribute('rel')).toEqual('nofollow');
-       });
-     </file>
-   </example>
- */
-angular.module('ngSanitize').filter('linky', ['$sanitize', function($sanitize) {
-  var LINKY_URL_REGEXP =
-        /((s?ftp|https?):\/\/|(www\.)|(mailto:)?[A-Za-z0-9._%+-]+@)\S*[^\s.;,(){}<>"\u201d\u2019]/i,
-      MAILTO_REGEXP = /^mailto:/i;
-
-  var linkyMinErr = angular.$$minErr('linky');
-  var isDefined = angular.isDefined;
-  var isFunction = angular.isFunction;
-  var isObject = angular.isObject;
-  var isString = angular.isString;
-
-  return function(text, target, attributes) {
-    if (text == null || text === '') return text;
-    if (!isString(text)) throw linkyMinErr('notstring', 'Expected string but received: {0}', text);
-
-    var attributesFn =
-      isFunction(attributes) ? attributes :
-      isObject(attributes) ? function getAttributesObject() {return attributes;} :
-      function getEmptyAttributesObject() {return {};};
-
-    var match;
-    var raw = text;
-    var html = [];
-    var url;
-    var i;
-    while ((match = raw.match(LINKY_URL_REGEXP))) {
-      // We can not end in these as they are sometimes found at the end of the sentence
-      url = match[0];
-      // if we did not match ftp/http/www/mailto then assume mailto
-      if (!match[2] && !match[4]) {
-        url = (match[3] ? 'http://' : 'mailto:') + url;
-      }
-      i = match.index;
-      addText(raw.substr(0, i));
-      addLink(url, match[0].replace(MAILTO_REGEXP, ''));
-      raw = raw.substring(i + match[0].length);
-    }
-    addText(raw);
-    return $sanitize(html.join(''));
-
-    function addText(text) {
-      if (!text) {
-        return;
-      }
-      html.push(sanitizeText(text));
-    }
-
-    function addLink(url, text) {
-      var key, linkAttributes = attributesFn(url);
-      html.push('<a ');
-
-      for (key in linkAttributes) {
-        html.push(key + '="' + linkAttributes[key] + '" ');
-      }
-
-      if (isDefined(target) && !('target' in linkAttributes)) {
-        html.push('target="',
-                  target,
-                  '" ');
-      }
-      html.push('href="',
-                url.replace(/"/g, '&quot;'),
-                '">');
-      addText(text);
-      html.push('</a>');
-    }
-  };
-}]);
-
-
-})(window, window.angular);
-
-
-/***/ }),
-
-/***/ "../../node_modules/angular-sanitize/index.js":
-/*!**************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/angular-sanitize/index.js ***!
-  \**************************************************************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-__webpack_require__(/*! ./angular-sanitize */ "../../node_modules/angular-sanitize/angular-sanitize.js");
-module.exports = 'ngSanitize';
-
-
-/***/ }),
-
-/***/ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/src/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7dark":
-/*!*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/css-loader/dist/cjs.js??ref--6-oneOf-0-1!/home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/postcss-loader/src??ref--6-oneOf-0-2!/home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-0-3!./public/index.scss?v7dark ***!
-  \*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
+/***/ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7dark":
+/*!*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/css-loader/dist/cjs.js??ref--6-oneOf-0-1!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-0-2!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/comment-stripper??ref--6-oneOf-0-3!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-0-4!./public/index.scss?v7dark ***!
+  \*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js */ "../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/api.js */ "../../node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
 // Imports
-var ___CSS_LOADER_API_IMPORT___ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/api.js */ "../../node_modules/css-loader/dist/runtime/api.js");
-exports = ___CSS_LOADER_API_IMPORT___(true);
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default.a);
 // Module
-exports.push([module.i, ".embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n#errorHtml h1 {\n  color: white;\n  text-align: center;\n  background-color: red; }\n\n.loading_msg {\n  height: 50px;\n  width: 150px;\n  color: #FFFFFF;\n  background-color: #006BB4;\n  text-align: center;\n  line-height: 40px; }\n", "",{"version":3,"sources":["index.scss"],"names":[],"mappings":"AAAA;EACE,8BAA8B;EAC9B,uBAAuB,EAAE;;AAE3B;EACE,WAAW;EACX,YAAY,EAAE;;AAEhB;EACE,kBAAkB;EAClB,kBAAkB;EAClB,YAAY;EACZ,mBAAmB;EACnB,eAAe;EACf,cAAc;EACd,wCAAwC;EAGxC,kBAAkB;EAClB,yBAAyB;EACzB,2CAA2C;EAC3C,oBAAoB,EAAE;;AAExB;EACE,YAAY;EACZ,kBAAkB;EAClB,qBAAqB,EAAE;;AAEzB;EACE,YAAY;EACZ,YAAY;EACZ,cAAc;EACd,yBAAyB;EACzB,kBAAkB;EAClB,iBAAiB,EAAE","file":"index.scss","sourcesContent":[".embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n#errorHtml h1 {\n  color: white;\n  text-align: center;\n  background-color: red; }\n\n.loading_msg {\n  height: 50px;\n  width: 150px;\n  color: #FFFFFF;\n  background-color: #006BB4;\n  text-align: center;\n  line-height: 40px; }\n"]}]);
+___CSS_LOADER_EXPORT___.push([module.i, "/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n", "",{"version":3,"sources":["webpack://./public/index.scss"],"names":[],"mappings":"AAAA;;;;;;;;;EASE;;AAEF;EACE,8BAA8B;EAC9B,uBAAuB,EAAE;;AAE3B;EACE,WAAW;EACX,YAAY,EAAE;;AAEhB;EACE,kBAAkB;EAClB,kBAAkB;EAClB,YAAY;EACZ,mBAAmB;EACnB,eAAe;EACf,cAAc;EACd,wCAAwC;EACxC,uBAAuB;EACvB,0BAA0B;EAC1B,kBAAkB;EAClB,yBAAyB;EACzB,2CAA2C;EAC3C,oBAAoB,EAAE;;AAExB;EACE,kBAAkB;EAClB,MAAM;EACN,QAAQ;EACR,2CAA2C;EAC3C,aAAa;EACb,eAAe,EAAE;EACjB;IACE,aAAa;IACb,mBAAmB,EAAE;IACrB;MACE,kBAAkB;MAClB,QAAQ;MACR,SAAS,EAAE;IACb;MACE,aAAa;MACb,mBAAmB;MACnB,YAAY;MACZ,eAAe,EAAE;MACjB;QACE,0BAA0B,EAAE;MAC9B;QACE,WAAW;QACX,YAAY;QACZ,kBAAkB;QAClB,iBAAiB,EAAE","sourcesContent":["/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n"],"sourceRoot":""}]);
 // Exports
-module.exports = exports;
+/* harmony default export */ __webpack_exports__["default"] = (___CSS_LOADER_EXPORT___);
 
 
 /***/ }),
 
-/***/ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/src/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7light":
-/*!**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/css-loader/dist/cjs.js??ref--6-oneOf-1-1!/home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/postcss-loader/src??ref--6-oneOf-1-2!/home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-1-3!./public/index.scss?v7light ***!
-  \**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7light":
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/css-loader/dist/cjs.js??ref--6-oneOf-1-1!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-1-2!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/comment-stripper??ref--6-oneOf-1-3!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-1-4!./public/index.scss?v7light ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js */ "../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/api.js */ "../../node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
 // Imports
-var ___CSS_LOADER_API_IMPORT___ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/api.js */ "../../node_modules/css-loader/dist/runtime/api.js");
-exports = ___CSS_LOADER_API_IMPORT___(true);
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default.a);
 // Module
-exports.push([module.i, ".embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n#errorHtml h1 {\n  color: white;\n  text-align: center;\n  background-color: red; }\n\n.loading_msg {\n  height: 50px;\n  width: 150px;\n  color: #FFFFFF;\n  background-color: #006BB4;\n  text-align: center;\n  line-height: 40px; }\n", "",{"version":3,"sources":["index.scss"],"names":[],"mappings":"AAAA;EACE,8BAA8B;EAC9B,uBAAuB,EAAE;;AAE3B;EACE,WAAW;EACX,YAAY,EAAE;;AAEhB;EACE,kBAAkB;EAClB,kBAAkB;EAClB,YAAY;EACZ,mBAAmB;EACnB,eAAe;EACf,cAAc;EACd,wCAAwC;EAGxC,kBAAkB;EAClB,yBAAyB;EACzB,2CAA2C;EAC3C,oBAAoB,EAAE;;AAExB;EACE,YAAY;EACZ,kBAAkB;EAClB,qBAAqB,EAAE;;AAEzB;EACE,YAAY;EACZ,YAAY;EACZ,cAAc;EACd,yBAAyB;EACzB,kBAAkB;EAClB,iBAAiB,EAAE","file":"index.scss","sourcesContent":[".embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n#errorHtml h1 {\n  color: white;\n  text-align: center;\n  background-color: red; }\n\n.loading_msg {\n  height: 50px;\n  width: 150px;\n  color: #FFFFFF;\n  background-color: #006BB4;\n  text-align: center;\n  line-height: 40px; }\n"]}]);
+___CSS_LOADER_EXPORT___.push([module.i, "/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n", "",{"version":3,"sources":["webpack://./public/index.scss"],"names":[],"mappings":"AAAA;;;;;;;;;EASE;;AAEF;EACE,8BAA8B;EAC9B,uBAAuB,EAAE;;AAE3B;EACE,WAAW;EACX,YAAY,EAAE;;AAEhB;EACE,kBAAkB;EAClB,kBAAkB;EAClB,YAAY;EACZ,mBAAmB;EACnB,eAAe;EACf,cAAc;EACd,wCAAwC;EACxC,uBAAuB;EACvB,0BAA0B;EAC1B,kBAAkB;EAClB,yBAAyB;EACzB,2CAA2C;EAC3C,oBAAoB,EAAE;;AAExB;EACE,kBAAkB;EAClB,MAAM;EACN,QAAQ;EACR,2CAA2C;EAC3C,aAAa;EACb,eAAe,EAAE;EACjB;IACE,aAAa;IACb,mBAAmB,EAAE;IACrB;MACE,kBAAkB;MAClB,QAAQ;MACR,SAAS,EAAE;IACb;MACE,aAAa;MACb,mBAAmB;MACnB,YAAY;MACZ,eAAe,EAAE;MACjB;QACE,0BAA0B,EAAE;MAC9B;QACE,WAAW;QACX,YAAY;QACZ,kBAAkB;QAClB,iBAAiB,EAAE","sourcesContent":["/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n"],"sourceRoot":""}]);
 // Exports
-module.exports = exports;
+/* harmony default export */ __webpack_exports__["default"] = (___CSS_LOADER_EXPORT___);
+
+
+/***/ }),
+
+/***/ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v8dark":
+/*!*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/css-loader/dist/cjs.js??ref--6-oneOf-2-1!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-2-2!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/comment-stripper??ref--6-oneOf-2-3!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-2-4!./public/index.scss?v8dark ***!
+  \*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js */ "../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/api.js */ "../../node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
+// Imports
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default.a);
+// Module
+___CSS_LOADER_EXPORT___.push([module.i, "/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n", "",{"version":3,"sources":["webpack://./public/index.scss"],"names":[],"mappings":"AAAA;;;;;;;;;EASE;;AAEF;EACE,8BAA8B;EAC9B,uBAAuB,EAAE;;AAE3B;EACE,WAAW;EACX,YAAY,EAAE;;AAEhB;EACE,kBAAkB;EAClB,kBAAkB;EAClB,YAAY;EACZ,mBAAmB;EACnB,eAAe;EACf,cAAc;EACd,wCAAwC;EACxC,uBAAuB;EACvB,0BAA0B;EAC1B,kBAAkB;EAClB,yBAAyB;EACzB,2CAA2C;EAC3C,oBAAoB,EAAE;;AAExB;EACE,kBAAkB;EAClB,MAAM;EACN,QAAQ;EACR,2CAA2C;EAC3C,aAAa;EACb,eAAe,EAAE;EACjB;IACE,aAAa;IACb,mBAAmB,EAAE;IACrB;MACE,kBAAkB;MAClB,QAAQ;MACR,SAAS,EAAE;IACb;MACE,aAAa;MACb,mBAAmB;MACnB,YAAY;MACZ,eAAe,EAAE;MACjB;QACE,0BAA0B,EAAE;MAC9B;QACE,WAAW;QACX,YAAY;QACZ,kBAAkB;QAClB,iBAAiB,EAAE","sourcesContent":["/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n"],"sourceRoot":""}]);
+// Exports
+/* harmony default export */ __webpack_exports__["default"] = (___CSS_LOADER_EXPORT___);
+
+
+/***/ }),
+
+/***/ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v8light":
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/css-loader/dist/cjs.js??ref--6-oneOf-3-1!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-3-2!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/comment-stripper??ref--6-oneOf-3-3!/home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-3-4!./public/index.scss?v8light ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js */ "../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../node_modules/css-loader/dist/runtime/api.js */ "../../node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
+// Imports
+
+
+var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()(_node_modules_css_loader_dist_runtime_cssWithMappingToString_js__WEBPACK_IMPORTED_MODULE_0___default.a);
+// Module
+___CSS_LOADER_EXPORT___.push([module.i, "/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n", "",{"version":3,"sources":["webpack://./public/index.scss"],"names":[],"mappings":"AAAA;;;;;;;;;EASE;;AAEF;EACE,8BAA8B;EAC9B,uBAAuB,EAAE;;AAE3B;EACE,WAAW;EACX,YAAY,EAAE;;AAEhB;EACE,kBAAkB;EAClB,kBAAkB;EAClB,YAAY;EACZ,mBAAmB;EACnB,eAAe;EACf,cAAc;EACd,wCAAwC;EACxC,uBAAuB;EACvB,0BAA0B;EAC1B,kBAAkB;EAClB,yBAAyB;EACzB,2CAA2C;EAC3C,oBAAoB,EAAE;;AAExB;EACE,kBAAkB;EAClB,MAAM;EACN,QAAQ;EACR,2CAA2C;EAC3C,aAAa;EACb,eAAe,EAAE;EACjB;IACE,aAAa;IACb,mBAAmB,EAAE;IACrB;MACE,kBAAkB;MAClB,QAAQ;MACR,SAAS,EAAE;IACb;MACE,aAAa;MACb,mBAAmB;MACnB,YAAY;MACZ,eAAe,EAAE;MACjB;QACE,0BAA0B,EAAE;MAC9B;QACE,WAAW;QACX,YAAY;QACZ,kBAAkB;QAClB,iBAAiB,EAAE","sourcesContent":["/*!\n * SPDX-License-Identifier: Apache-2.0\n *\n * The OpenSearch Contributors require contributions made to\n * this file be licensed under the Apache-2.0 license or a\n * compatible open source license.\n *\n * Modifications Copyright OpenSearch Contributors. See\n * GitHub history for details.\n */\n\n.embPanel__content[data-error], .embPanel__content[data-loading] {\n  pointer-events: all !important;\n  filter: none !important; }\n\n.network-vis {\n  width: 100%;\n  height: 100%; }\n\ndiv.vis-tooltip {\n  position: absolute;\n  visibility: hidden;\n  padding: 5px;\n  white-space: nowrap;\n  font-size: 14px;\n  color: #ecf0f1;\n  background-color: rgba(34, 34, 34, 0.93);\n  -moz-border-radius: 3px;\n  -webkit-border-radius: 3px;\n  border-radius: 3px;\n  border: 1px solid #808074;\n  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);\n  pointer-events: none; }\n\n.vis-network-legend {\n  position: absolute;\n  top: 0;\n  right: 0;\n  background-color: rgba(218, 218, 218, 0.25);\n  padding: 12px;\n  font-size: 14px; }\n  .vis-network-legend .vis-network-legend-line {\n    display: flex;\n    align-items: center; }\n    .vis-network-legend .vis-network-legend-line input {\n      visibility: hidden;\n      width: 0;\n      height: 0; }\n    .vis-network-legend .vis-network-legend-line label {\n      display: flex;\n      align-items: center;\n      padding: 3px;\n      cursor: pointer; }\n      .vis-network-legend .vis-network-legend-line label:hover {\n        text-decoration: underline; }\n      .vis-network-legend .vis-network-legend-line label .vis-network-legend-color {\n        width: 15px;\n        height: 15px;\n        border-radius: 50%;\n        margin-right: 6px; }\n"],"sourceRoot":""}]);
+// Exports
+/* harmony default export */ __webpack_exports__["default"] = (___CSS_LOADER_EXPORT___);
 
 
 /***/ }),
 
 /***/ "../../node_modules/css-loader/dist/runtime/api.js":
-/*!*******************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/css-loader/dist/runtime/api.js ***!
-  \*******************************************************************************************************/
+/*!****************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/css-loader/dist/runtime/api.js ***!
+  \****************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1514,27 +317,27 @@ module.exports = exports;
 */
 // css base code, injected by the css-loader
 // eslint-disable-next-line func-names
-module.exports = function (useSourceMap) {
+module.exports = function (cssWithMappingToString) {
   var list = []; // return the list of modules as css string
 
   list.toString = function toString() {
     return this.map(function (item) {
-      var content = cssWithMappingToString(item, useSourceMap);
+      var content = cssWithMappingToString(item);
 
       if (item[2]) {
         return "@media ".concat(item[2], " {").concat(content, "}");
       }
 
       return content;
-    }).join('');
+    }).join("");
   }; // import a list of modules into the list
   // eslint-disable-next-line func-names
 
 
   list.i = function (modules, mediaQuery, dedupe) {
-    if (typeof modules === 'string') {
+    if (typeof modules === "string") {
       // eslint-disable-next-line no-param-reassign
-      modules = [[null, modules, '']];
+      modules = [[null, modules, ""]];
     }
 
     var alreadyImportedModules = {};
@@ -1573,40 +376,59 @@ module.exports = function (useSourceMap) {
   return list;
 };
 
-function cssWithMappingToString(item, useSourceMap) {
-  var content = item[1] || ''; // eslint-disable-next-line prefer-destructuring
+/***/ }),
 
-  var cssMapping = item[3];
+/***/ "../../node_modules/css-loader/dist/runtime/cssWithMappingToString.js":
+/*!***********************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/css-loader/dist/runtime/cssWithMappingToString.js ***!
+  \***********************************************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function _iterableToArrayLimit(arr, i) { var _i = arr && (typeof Symbol !== "undefined" && arr[Symbol.iterator] || arr["@@iterator"]); if (_i == null) return; var _arr = []; var _n = true; var _d = false; var _s, _e; try { for (_i = _i.call(arr); !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+module.exports = function cssWithMappingToString(item) {
+  var _item = _slicedToArray(item, 4),
+      content = _item[1],
+      cssMapping = _item[3];
 
   if (!cssMapping) {
     return content;
   }
 
-  if (useSourceMap && typeof btoa === 'function') {
-    var sourceMapping = toComment(cssMapping);
+  if (typeof btoa === "function") {
+    // eslint-disable-next-line no-undef
+    var base64 = btoa(unescape(encodeURIComponent(JSON.stringify(cssMapping))));
+    var data = "sourceMappingURL=data:application/json;charset=utf-8;base64,".concat(base64);
+    var sourceMapping = "/*# ".concat(data, " */");
     var sourceURLs = cssMapping.sources.map(function (source) {
-      return "/*# sourceURL=".concat(cssMapping.sourceRoot || '').concat(source, " */");
+      return "/*# sourceURL=".concat(cssMapping.sourceRoot || "").concat(source, " */");
     });
-    return [content].concat(sourceURLs).concat([sourceMapping]).join('\n');
+    return [content].concat(sourceURLs).concat([sourceMapping]).join("\n");
   }
 
-  return [content].join('\n');
-} // Adapted from convert-source-map (MIT)
-
-
-function toComment(sourceMap) {
-  // eslint-disable-next-line no-undef
-  var base64 = btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap))));
-  var data = "sourceMappingURL=data:application/json;charset=utf-8;base64,".concat(base64);
-  return "/*# ".concat(data, " */");
-}
+  return [content].join("\n");
+};
 
 /***/ }),
 
 /***/ "../../node_modules/lodash/_Hash.js":
-/*!****************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_Hash.js ***!
-  \****************************************************************************************/
+/*!*************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_Hash.js ***!
+  \*************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1647,9 +469,9 @@ module.exports = Hash;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_ListCache.js":
-/*!*********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_ListCache.js ***!
-  \*********************************************************************************************/
+/*!******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_ListCache.js ***!
+  \******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1690,9 +512,9 @@ module.exports = ListCache;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_Map.js":
-/*!***************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_Map.js ***!
-  \***************************************************************************************/
+/*!************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_Map.js ***!
+  \************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1708,9 +530,9 @@ module.exports = Map;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_MapCache.js":
-/*!********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_MapCache.js ***!
-  \********************************************************************************************/
+/*!*****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_MapCache.js ***!
+  \*****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1751,9 +573,9 @@ module.exports = MapCache;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_Symbol.js":
-/*!******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_Symbol.js ***!
-  \******************************************************************************************/
+/*!***************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_Symbol.js ***!
+  \***************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1768,9 +590,9 @@ module.exports = Symbol;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_arrayMap.js":
-/*!********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_arrayMap.js ***!
-  \********************************************************************************************/
+/*!*****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_arrayMap.js ***!
+  \*****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -1800,9 +622,9 @@ module.exports = arrayMap;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_assignValue.js":
-/*!***********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_assignValue.js ***!
-  \***********************************************************************************************/
+/*!********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_assignValue.js ***!
+  \********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1839,9 +661,9 @@ module.exports = assignValue;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_assocIndexOf.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_assocIndexOf.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_assocIndexOf.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1871,9 +693,9 @@ module.exports = assocIndexOf;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_baseAssignValue.js":
-/*!***************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_baseAssignValue.js ***!
-  \***************************************************************************************************/
+/*!************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_baseAssignValue.js ***!
+  \************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1907,9 +729,9 @@ module.exports = baseAssignValue;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_baseGetTag.js":
-/*!**********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_baseGetTag.js ***!
-  \**********************************************************************************************/
+/*!*******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_baseGetTag.js ***!
+  \*******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1946,9 +768,9 @@ module.exports = baseGetTag;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_baseIsNative.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_baseIsNative.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_baseIsNative.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2004,9 +826,9 @@ module.exports = baseIsNative;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_baseToString.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_baseToString.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_baseToString.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2052,9 +874,9 @@ module.exports = baseToString;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_castPath.js":
-/*!********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_castPath.js ***!
-  \********************************************************************************************/
+/*!*****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_castPath.js ***!
+  \*****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2084,9 +906,9 @@ module.exports = castPath;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_coreJsData.js":
-/*!**********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_coreJsData.js ***!
-  \**********************************************************************************************/
+/*!*******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_coreJsData.js ***!
+  \*******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2101,9 +923,9 @@ module.exports = coreJsData;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_defineProperty.js":
-/*!**************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_defineProperty.js ***!
-  \**************************************************************************************************/
+/*!***********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_defineProperty.js ***!
+  \***********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2123,9 +945,9 @@ module.exports = defineProperty;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_freeGlobal.js":
-/*!**********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_freeGlobal.js ***!
-  \**********************************************************************************************/
+/*!*******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_freeGlobal.js ***!
+  \*******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2139,9 +961,9 @@ module.exports = freeGlobal;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_getMapData.js":
-/*!**********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_getMapData.js ***!
-  \**********************************************************************************************/
+/*!*******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_getMapData.js ***!
+  \*******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2168,9 +990,9 @@ module.exports = getMapData;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_getNative.js":
-/*!*********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_getNative.js ***!
-  \*********************************************************************************************/
+/*!******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_getNative.js ***!
+  \******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2196,9 +1018,9 @@ module.exports = getNative;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_getRawTag.js":
-/*!*********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_getRawTag.js ***!
-  \*********************************************************************************************/
+/*!******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_getRawTag.js ***!
+  \******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2253,9 +1075,9 @@ module.exports = getRawTag;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_getValue.js":
-/*!********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_getValue.js ***!
-  \********************************************************************************************/
+/*!*****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_getValue.js ***!
+  \*****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -2277,9 +1099,9 @@ module.exports = getValue;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_hashClear.js":
-/*!*********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_hashClear.js ***!
-  \*********************************************************************************************/
+/*!******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_hashClear.js ***!
+  \******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2303,9 +1125,9 @@ module.exports = hashClear;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_hashDelete.js":
-/*!**********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_hashDelete.js ***!
-  \**********************************************************************************************/
+/*!*******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_hashDelete.js ***!
+  \*******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -2331,9 +1153,9 @@ module.exports = hashDelete;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_hashGet.js":
-/*!*******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_hashGet.js ***!
-  \*******************************************************************************************/
+/*!****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_hashGet.js ***!
+  \****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2372,9 +1194,9 @@ module.exports = hashGet;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_hashHas.js":
-/*!*******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_hashHas.js ***!
-  \*******************************************************************************************/
+/*!****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_hashHas.js ***!
+  \****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2406,9 +1228,9 @@ module.exports = hashHas;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_hashSet.js":
-/*!*******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_hashSet.js ***!
-  \*******************************************************************************************/
+/*!****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_hashSet.js ***!
+  \****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2440,9 +1262,9 @@ module.exports = hashSet;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_isIndex.js":
-/*!*******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_isIndex.js ***!
-  \*******************************************************************************************/
+/*!****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_isIndex.js ***!
+  \****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -2476,9 +1298,9 @@ module.exports = isIndex;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_isKey.js":
-/*!*****************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_isKey.js ***!
-  \*****************************************************************************************/
+/*!**************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_isKey.js ***!
+  \**************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2516,9 +1338,9 @@ module.exports = isKey;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_isKeyable.js":
-/*!*********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_isKeyable.js ***!
-  \*********************************************************************************************/
+/*!******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_isKeyable.js ***!
+  \******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -2542,9 +1364,9 @@ module.exports = isKeyable;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_isMasked.js":
-/*!********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_isMasked.js ***!
-  \********************************************************************************************/
+/*!*****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_isMasked.js ***!
+  \*****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2573,9 +1395,9 @@ module.exports = isMasked;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_listCacheClear.js":
-/*!**************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_listCacheClear.js ***!
-  \**************************************************************************************************/
+/*!***********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_listCacheClear.js ***!
+  \***********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -2597,9 +1419,9 @@ module.exports = listCacheClear;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_listCacheDelete.js":
-/*!***************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_listCacheDelete.js ***!
-  \***************************************************************************************************/
+/*!************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_listCacheDelete.js ***!
+  \************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2643,9 +1465,9 @@ module.exports = listCacheDelete;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_listCacheGet.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_listCacheGet.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_listCacheGet.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2673,9 +1495,9 @@ module.exports = listCacheGet;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_listCacheHas.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_listCacheHas.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_listCacheHas.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2700,9 +1522,9 @@ module.exports = listCacheHas;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_listCacheSet.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_listCacheSet.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_listCacheSet.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2737,9 +1559,9 @@ module.exports = listCacheSet;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_mapCacheClear.js":
-/*!*************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_mapCacheClear.js ***!
-  \*************************************************************************************************/
+/*!**********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_mapCacheClear.js ***!
+  \**********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2769,9 +1591,9 @@ module.exports = mapCacheClear;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_mapCacheDelete.js":
-/*!**************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_mapCacheDelete.js ***!
-  \**************************************************************************************************/
+/*!***********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_mapCacheDelete.js ***!
+  \***********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2798,9 +1620,9 @@ module.exports = mapCacheDelete;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_mapCacheGet.js":
-/*!***********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_mapCacheGet.js ***!
-  \***********************************************************************************************/
+/*!********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_mapCacheGet.js ***!
+  \********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2825,9 +1647,9 @@ module.exports = mapCacheGet;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_mapCacheHas.js":
-/*!***********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_mapCacheHas.js ***!
-  \***********************************************************************************************/
+/*!********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_mapCacheHas.js ***!
+  \********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2852,9 +1674,9 @@ module.exports = mapCacheHas;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_mapCacheSet.js":
-/*!***********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_mapCacheSet.js ***!
-  \***********************************************************************************************/
+/*!********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_mapCacheSet.js ***!
+  \********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2885,9 +1707,9 @@ module.exports = mapCacheSet;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_memoizeCapped.js":
-/*!*************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_memoizeCapped.js ***!
-  \*************************************************************************************************/
+/*!**********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_memoizeCapped.js ***!
+  \**********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2922,9 +1744,9 @@ module.exports = memoizeCapped;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_nativeCreate.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_nativeCreate.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_nativeCreate.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2939,9 +1761,9 @@ module.exports = nativeCreate;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_objectToString.js":
-/*!**************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_objectToString.js ***!
-  \**************************************************************************************************/
+/*!***********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_objectToString.js ***!
+  \***********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -2972,9 +1794,9 @@ module.exports = objectToString;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_root.js":
-/*!****************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_root.js ***!
-  \****************************************************************************************/
+/*!*************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_root.js ***!
+  \*************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2992,9 +1814,9 @@ module.exports = root;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_stringToPath.js":
-/*!************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_stringToPath.js ***!
-  \************************************************************************************************/
+/*!*********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_stringToPath.js ***!
+  \*********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3030,9 +1852,9 @@ module.exports = stringToPath;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_toKey.js":
-/*!*****************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_toKey.js ***!
-  \*****************************************************************************************/
+/*!**************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_toKey.js ***!
+  \**************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3062,9 +1884,9 @@ module.exports = toKey;
 /***/ }),
 
 /***/ "../../node_modules/lodash/_toSource.js":
-/*!********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/_toSource.js ***!
-  \********************************************************************************************/
+/*!*****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/_toSource.js ***!
+  \*****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -3099,9 +1921,9 @@ module.exports = toSource;
 /***/ }),
 
 /***/ "../../node_modules/lodash/eq.js":
-/*!*************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/eq.js ***!
-  \*************************************************************************************/
+/*!**********************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/eq.js ***!
+  \**********************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -3147,9 +1969,9 @@ module.exports = eq;
 /***/ }),
 
 /***/ "../../node_modules/lodash/isArray.js":
-/*!******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/isArray.js ***!
-  \******************************************************************************************/
+/*!***************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/isArray.js ***!
+  \***************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -3184,9 +2006,9 @@ module.exports = isArray;
 /***/ }),
 
 /***/ "../../node_modules/lodash/isFunction.js":
-/*!*********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/isFunction.js ***!
-  \*********************************************************************************************/
+/*!******************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/isFunction.js ***!
+  \******************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3232,9 +2054,9 @@ module.exports = isFunction;
 /***/ }),
 
 /***/ "../../node_modules/lodash/isObject.js":
-/*!*******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/isObject.js ***!
-  \*******************************************************************************************/
+/*!****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/isObject.js ***!
+  \****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -3274,9 +2096,9 @@ module.exports = isObject;
 /***/ }),
 
 /***/ "../../node_modules/lodash/isObjectLike.js":
-/*!***********************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/isObjectLike.js ***!
-  \***********************************************************************************************/
+/*!********************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/isObjectLike.js ***!
+  \********************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -3314,9 +2136,9 @@ module.exports = isObjectLike;
 /***/ }),
 
 /***/ "../../node_modules/lodash/isSymbol.js":
-/*!*******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/isSymbol.js ***!
-  \*******************************************************************************************/
+/*!****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/isSymbol.js ***!
+  \****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3354,9 +2176,9 @@ module.exports = isSymbol;
 /***/ }),
 
 /***/ "../../node_modules/lodash/memoize.js":
-/*!******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/memoize.js ***!
-  \******************************************************************************************/
+/*!***************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/memoize.js ***!
+  \***************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3438,9 +2260,9 @@ module.exports = memoize;
 /***/ }),
 
 /***/ "../../node_modules/lodash/toString.js":
-/*!*******************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/lodash/toString.js ***!
-  \*******************************************************************************************/
+/*!****************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/lodash/toString.js ***!
+  \****************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3477,9 +2299,9 @@ module.exports = toString;
 /***/ }),
 
 /***/ "../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js":
-/*!******************************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js ***!
-  \******************************************************************************************************************************/
+/*!***************************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js ***!
+  \***************************************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3659,7 +2481,7 @@ function applyToTag(style, options, obj) {
     style.removeAttribute('media');
   }
 
-  if (sourceMap && btoa) {
+  if (sourceMap && typeof btoa !== 'undefined') {
     css += "\n/*# sourceMappingURL=data:application/json;base64,".concat(btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))), " */");
   } // For old IE
 
@@ -3756,42 +2578,14 @@ module.exports = function (list, options) {
 
 /***/ }),
 
-/***/ "../../node_modules/val-loader/dist/cjs.js?key=kbnNetwork!../../packages/kbn-ui-shared-deps/public_path_module_creator.js":
-/*!****************************************************************************************************************************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/node_modules/val-loader/dist/cjs.js?key=kbnNetwork!/home/dlumbrer/devel/kibanaworkspace/kibana-elastic/packages/kbn-ui-shared-deps/public_path_module_creator.js ***!
-  \****************************************************************************************************************************************************************************************************************************/
+/***/ "../../node_modules/val-loader/dist/cjs.js?key=kbnNetwork!../../packages/osd-ui-shared-deps/public_path_module_creator.js":
+/*!**********************************************************************************************************************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/node_modules/val-loader/dist/cjs.js?key=kbnNetwork!/home/evamillan/opensearch/OpenSearch-Dashboards/packages/osd-ui-shared-deps/public_path_module_creator.js ***!
+  \**********************************************************************************************************************************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__.p = window.__kbnPublicPath__['kbnNetwork']
-
-/***/ }),
-
-/***/ "../../node_modules/webpack/buildin/amd-define.js":
-/*!***************************************!*\
-  !*** (webpack)/buildin/amd-define.js ***!
-  \***************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-module.exports = function() {
-	throw new Error("define cannot be used indirect");
-};
-
-
-/***/ }),
-
-/***/ "../../node_modules/webpack/buildin/amd-options.js":
-/*!****************************************!*\
-  !*** (webpack)/buildin/amd-options.js ***!
-  \****************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-/* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {/* globals __webpack_amd_options__ */
-module.exports = __webpack_amd_options__;
-
-/* WEBPACK VAR INJECTION */}.call(this, {}))
+__webpack_require__.p = window.__osdPublicPath__['kbnNetwork']
 
 /***/ }),
 
@@ -3859,36 +2653,82 @@ module.exports = function(module) {
 
 /***/ }),
 
-/***/ "../../packages/elastic-safer-lodash-set/index.js":
+/***/ "../../packages/opensearch-safer-lodash-set/index.js":
 /*!******************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/packages/elastic-safer-lodash-set/index.js ***!
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/packages/opensearch-safer-lodash-set/index.js ***!
   \******************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
- * This file is forked from the lodash project (https://lodash.com/),
- * and may include modifications made by Elasticsearch B.V.
- * Elasticsearch B.V. licenses this file to you under the MIT License.
- * See `packages/elastic-safer-lodash-set/LICENSE` for more information.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ * Any modifications Copyright OpenSearch Contributors. See
+ * GitHub history for details.
  */
-exports.set = __webpack_require__(/*! ./lodash/set */ "../../packages/elastic-safer-lodash-set/lodash/set.js");
-exports.setWith = __webpack_require__(/*! ./lodash/setWith */ "../../packages/elastic-safer-lodash-set/lodash/setWith.js");
+
+/*
+ * Licensed to Elasticsearch B.V. under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch B.V. licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+exports.set = __webpack_require__(/*! ./lodash/set */ "../../packages/opensearch-safer-lodash-set/lodash/set.js");
+exports.setWith = __webpack_require__(/*! ./lodash/setWith */ "../../packages/opensearch-safer-lodash-set/lodash/setWith.js");
 
 /***/ }),
 
-/***/ "../../packages/elastic-safer-lodash-set/lodash/_baseSet.js":
+/***/ "../../packages/opensearch-safer-lodash-set/lodash/_baseSet.js":
 /*!****************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/packages/elastic-safer-lodash-set/lodash/_baseSet.js ***!
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/packages/opensearch-safer-lodash-set/lodash/_baseSet.js ***!
   \****************************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
- * This file is forked from the lodash project (https://lodash.com/),
- * and may include modifications made by Elasticsearch B.V.
- * Elasticsearch B.V. licenses this file to you under the MIT License.
- * See `packages/elastic-safer-lodash-set/LICENSE` for more information.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ * Any modifications Copyright OpenSearch Contributors. See
+ * GitHub history for details.
+ */
+
+/*
+ * Licensed to Elasticsearch B.V. under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch B.V. licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /* eslint-disable */
@@ -3949,22 +2789,45 @@ module.exports = baseSet;
 
 /***/ }),
 
-/***/ "../../packages/elastic-safer-lodash-set/lodash/set.js":
+/***/ "../../packages/opensearch-safer-lodash-set/lodash/set.js":
 /*!***********************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/packages/elastic-safer-lodash-set/lodash/set.js ***!
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/packages/opensearch-safer-lodash-set/lodash/set.js ***!
   \***********************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
- * This file is forked from the lodash project (https://lodash.com/),
- * and may include modifications made by Elasticsearch B.V.
- * Elasticsearch B.V. licenses this file to you under the MIT License.
- * See `packages/elastic-safer-lodash-set/LICENSE` for more information.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ * Any modifications Copyright OpenSearch Contributors. See
+ * GitHub history for details.
+ */
+
+/*
+ * Licensed to Elasticsearch B.V. under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch B.V. licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /* eslint-disable */
-var baseSet = __webpack_require__(/*! ./_baseSet */ "../../packages/elastic-safer-lodash-set/lodash/_baseSet.js");
+var baseSet = __webpack_require__(/*! ./_baseSet */ "../../packages/opensearch-safer-lodash-set/lodash/_baseSet.js");
 /**
  * Sets the value at `path` of `object`. If a portion of `path` doesn't exist,
  * it's created. Arrays are created for missing index properties while objects
@@ -4003,22 +2866,45 @@ module.exports = set;
 
 /***/ }),
 
-/***/ "../../packages/elastic-safer-lodash-set/lodash/setWith.js":
+/***/ "../../packages/opensearch-safer-lodash-set/lodash/setWith.js":
 /*!***************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/packages/elastic-safer-lodash-set/lodash/setWith.js ***!
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/packages/opensearch-safer-lodash-set/lodash/setWith.js ***!
   \***************************************************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
- * This file is forked from the lodash project (https://lodash.com/),
- * and may include modifications made by Elasticsearch B.V.
- * Elasticsearch B.V. licenses this file to you under the MIT License.
- * See `packages/elastic-safer-lodash-set/LICENSE` for more information.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+ * Any modifications Copyright OpenSearch Contributors. See
+ * GitHub history for details.
+ */
+
+/*
+ * Licensed to Elasticsearch B.V. under one or more contributor
+ * license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright
+ * ownership. Elasticsearch B.V. licenses this file to you under
+ * the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /* eslint-disable */
-var baseSet = __webpack_require__(/*! ./_baseSet */ "../../packages/elastic-safer-lodash-set/lodash/_baseSet.js");
+var baseSet = __webpack_require__(/*! ./_baseSet */ "../../packages/opensearch-safer-lodash-set/lodash/_baseSet.js");
 /**
  * This method is like `_.set` except that it accepts `customizer` which is
  * invoked to produce the objects of `path`.  If `customizer` returns `undefined`
@@ -4054,18 +2940,18 @@ module.exports = setWith;
 
 /***/ }),
 
-/***/ "../../packages/kbn-optimizer/target/worker/entry_point_creator.js":
-/*!***********************************************************************************************************************!*\
-  !*** /home/dlumbrer/devel/kibanaworkspace/kibana-elastic/packages/kbn-optimizer/target/worker/entry_point_creator.js ***!
-  \***********************************************************************************************************************/
+/***/ "../../packages/osd-optimizer/target/worker/entry_point_creator.js":
+/*!********************************************************************************************************************!*\
+  !*** /home/evamillan/opensearch/OpenSearch-Dashboards/packages/osd-optimizer/target/worker/entry_point_creator.js ***!
+  \********************************************************************************************************************/
 /*! no exports provided */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _node_modules_val_loader_dist_cjs_js_key_kbnNetwork_kbn_ui_shared_deps_public_path_module_creator_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../../node_modules/val-loader/dist/cjs.js?key=kbnNetwork!../../../kbn-ui-shared-deps/public_path_module_creator.js */ "../../node_modules/val-loader/dist/cjs.js?key=kbnNetwork!../../packages/kbn-ui-shared-deps/public_path_module_creator.js");
-/* harmony import */ var _node_modules_val_loader_dist_cjs_js_key_kbnNetwork_kbn_ui_shared_deps_public_path_module_creator_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_val_loader_dist_cjs_js_key_kbnNetwork_kbn_ui_shared_deps_public_path_module_creator_js__WEBPACK_IMPORTED_MODULE_0__);
-__kbnBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require.resolve*/(/*! ../../../../plugins/network_vis/public */ "./public/index.ts"))
+/* harmony import */ var _node_modules_val_loader_dist_cjs_js_key_kbnNetwork_osd_ui_shared_deps_public_path_module_creator_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../../node_modules/val-loader/dist/cjs.js?key=kbnNetwork!../../../osd-ui-shared-deps/public_path_module_creator.js */ "../../node_modules/val-loader/dist/cjs.js?key=kbnNetwork!../../packages/osd-ui-shared-deps/public_path_module_creator.js");
+/* harmony import */ var _node_modules_val_loader_dist_cjs_js_key_kbnNetwork_osd_ui_shared_deps_public_path_module_creator_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_val_loader_dist_cjs_js_key_kbnNetwork_osd_ui_shared_deps_public_path_module_creator_js__WEBPACK_IMPORTED_MODULE_0__);
+__osdBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require.resolve*/(/*! ../../../../plugins/network_vis/public */ "./public/index.ts"))
 
 /***/ }),
 
@@ -4107,9 +2993,6 @@ __kbnBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require
   // Populate the color dictionary
   loadColorBounds();
 
-  // check if a range is taken
-  var colorRanges = [];
-
   var randomColor = function (options) {
 
     options = options || {};
@@ -4139,10 +3022,7 @@ __kbnBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require
 
       var totalColors = options.count,
           colors = [];
-      // Value false at index i means the range i is not taken yet.
-      for (var i = 0; i < options.count; i++) {
-        colorRanges.push(false)
-        }
+
       options.count = null;
 
       while (totalColors > colors.length) {
@@ -4173,47 +3053,17 @@ __kbnBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require
     return setFormat([H,S,B], options);
   };
 
-  function pickHue(options) {
-    if (colorRanges.length > 0) {
-      var hueRange = getRealHueRange(options.hue)
+  function pickHue (options) {
 
-      var hue = randomWithin(hueRange)
+    var hueRange = getHueRange(options.hue),
+        hue = randomWithin(hueRange);
 
-      //Each of colorRanges.length ranges has a length equal approximatelly one step
-      var step = (hueRange[1] - hueRange[0]) / colorRanges.length
+    // Instead of storing red as two seperate ranges,
+    // we group them, using negative numbers
+    if (hue < 0) {hue = 360 + hue;}
 
-      var j = parseInt((hue - hueRange[0]) / step)
+    return hue;
 
-      //Check if the range j is taken
-      if (colorRanges[j] === true) {
-        j = (j + 2) % colorRanges.length
-      }
-      else {
-        colorRanges[j] = true
-           }
-
-      var min = (hueRange[0] + j * step) % 359,
-          max = (hueRange[0] + (j + 1) * step) % 359;
-
-      hueRange = [min, max]
-
-      hue = randomWithin(hueRange)
-
-      if (hue < 0) {hue = 360 + hue;}
-      return hue
-    }
-    else {
-      var hueRange = getHueRange(options.hue)
-
-      hue = randomWithin(hueRange);
-      // Instead of storing red as two seperate ranges,
-      // we group them, using negative numbers
-      if (hue < 0) {
-        hue = 360 + hue;
-      }
-
-      return hue;
-    }
   }
 
   function pickSaturation (hue, options) {
@@ -4386,12 +3236,7 @@ __kbnBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require
 
   function randomWithin (range) {
     if (seed === null) {
-      //generate random evenly destinct number from : https://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
-      var golden_ratio = 0.618033988749895
-      var r=Math.random()
-      r += golden_ratio
-      r %= 1
-      return Math.floor(range[0] + r*(range[1] + 1 - range[0]));
+      return Math.floor(range[0] + Math.random()*(range[1] + 1 - range[0]));
     } else {
       //Seeded random algorithm from http://indiegamr.com/generate-repeatable-random-numbers-in-js/
       var max = range[1] || 1;
@@ -4399,7 +3244,7 @@ __kbnBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require
       seed = (seed * 9301 + 49297) % 233280;
       var rnd = seed / 233280.0;
       return Math.floor(min + rnd * (max - min));
-}
+    }
   }
 
   function HSVtoHex (hsv){
@@ -4562,31 +3407,6 @@ __kbnBundles__.define('plugin/kbnNetwork/public', __webpack_require__, /*require
     return total
   }
 
-  // get The range of given hue when options.count!=0
-  function getRealHueRange(colorHue)
-  { if (!isNaN(colorHue)) {
-    var number = parseInt(colorHue);
-
-    if (number < 360 && number > 0) {
-      return getColorInfo(colorHue).hueRange
-    }
-  }
-    else if (typeof colorHue === 'string') {
-
-      if (colorDictionary[colorHue]) {
-        var color = colorDictionary[colorHue];
-
-        if (color.hueRange) {
-          return color.hueRange
-       }
-    } else if (colorHue.match(/^#?([0-9A-F]{3}|[0-9A-F]{6})$/i)) {
-        var hue = HexToHSB(colorHue)[0]
-        return getColorInfo(hue).hueRange
-    }
-  }
-
-    return [0,360]
-}
   return randomColor;
 }));
 
@@ -17865,319 +16685,6 @@ function Ks(){return(Ks=Object.assign||function(t){for(var e=1;e<arguments.lengt
 
 /***/ }),
 
-/***/ "./public/agg_table/agg_table.html":
-/*!*****************************************!*\
-  !*** ./public/agg_table/agg_table.html ***!
-  \*****************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("<network-paginated-table\n  ng-if=\"rows.length\"\n  table=\"table\"\n  rows=\"rows\"\n  columns=\"formattedColumns\"\n  per-page=\"perPage\"\n  sort=\"sort\"\n  show-total=\"showTotal\"\n  filter=\"filter\"\n  totalFunc=\"totalFunc\">\n\n  <div class=\"kbnAggTable__controls\">\n    <small\n      i18n-id=\"visTypeTable.aggTable.exportLabel\"\n      i18n-default-message=\"Export:\"\n    ></small>&nbsp;&nbsp;\n    <a class=\"small\" ng-click=\"aggTable.exportAsCsv(false)\">\n      <span\n        i18n-id=\"visTypeTable.aggTable.rawLabel\"\n        i18n-default-message=\"Raw\"\n       ></span>\n       <i aria-hidden=\"true\" class=\"fa fa-download\"></i>\n    </a>&nbsp;&nbsp;&nbsp;\n    <a class=\"small\" ng-click=\"aggTable.exportAsCsv(true)\">\n      <span\n        i18n-id=\"visTypeTable.aggTable.formattedLabel\"\n        i18n-default-message=\"Formatted\"\n       ></span>\n       <i aria-hidden=\"true\" class=\"fa fa-download\"></i>\n    </a>\n    <paginate-controls></paginate-controls>\n  </div>\n</network-paginated-table>\n");
-
-/***/ }),
-
-/***/ "./public/agg_table/agg_table.js":
-/*!***************************************!*\
-  !*** ./public/agg_table/agg_table.js ***!
-  \***************************************/
-/*! exports provided: KbnNetworkAggTable */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "KbnNetworkAggTable", function() { return KbnNetworkAggTable; });
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ "lodash");
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _src_plugins_share_public__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../../src/plugins/share/public */ "plugin/share/public");
-/* harmony import */ var _src_plugins_share_public__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_share_public__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _agg_table_html__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./agg_table.html */ "./public/agg_table/agg_table.html");
-/* harmony import */ var _services__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../services */ "./public/services.ts");
-/* harmony import */ var _field_formatter__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../field_formatter */ "./public/field_formatter.ts");
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-
-
-
-
-function KbnNetworkAggTable(config, RecursionHelper) {
-  const fieldFormats = Object(_services__WEBPACK_IMPORTED_MODULE_3__["getFormatService"])();
-  const numberFormatter = fieldFormats.getDefaultInstance('number').getConverterFor('text');
-  return {
-    restrict: 'E',
-    template: _agg_table_html__WEBPACK_IMPORTED_MODULE_2__["default"],
-    scope: {
-      table: '=',
-      perPage: '=?',
-      sort: '=?',
-      exportTitle: '=?',
-      showTotal: '=',
-      totalFunc: '=',
-      filter: '='
-    },
-    controllerAs: 'aggTable',
-    compile: function ($el) {
-      // Use the compile function from the RecursionHelper,
-      // And return the linking function(s) which it returns
-      return RecursionHelper.compile($el);
-    },
-    controller: function ($scope) {
-      const self = this;
-      self._saveAs = __webpack_require__(/*! @elastic/filesaver */ "../../node_modules/@elastic/filesaver/file-saver.js").saveAs;
-      self.csv = {
-        separator: config.get(_src_plugins_share_public__WEBPACK_IMPORTED_MODULE_1__["CSV_SEPARATOR_SETTING"]),
-        quoteValues: config.get(_src_plugins_share_public__WEBPACK_IMPORTED_MODULE_1__["CSV_QUOTE_VALUES_SETTING"])
-      };
-
-      self.exportAsCsv = function (formatted) {
-        const csv = new Blob([self.toCsv(formatted)], {
-          type: 'text/plain;charset=utf-8'
-        });
-
-        self._saveAs(csv, self.csv.filename);
-      };
-
-      self.toCsv = function (formatted) {
-        const rows = $scope.table.rows;
-        const columns = formatted ? $scope.formattedColumns : $scope.table.columns;
-        const nonAlphaNumRE = /[^a-zA-Z0-9]/;
-        const allDoubleQuoteRE = /"/g;
-
-        function escape(val) {
-          if (!formatted && lodash__WEBPACK_IMPORTED_MODULE_0___default.a.isObject(val)) val = val.valueOf();
-          val = String(val);
-
-          if (self.csv.quoteValues && nonAlphaNumRE.test(val)) {
-            val = '"' + val.replace(allDoubleQuoteRE, '""') + '"';
-          }
-
-          return val;
-        } // escape each cell in each row
-
-
-        const csvRows = rows.map(function (row) {
-          return row.map(escape);
-        }); // add the columns to the rows
-
-        csvRows.unshift(columns.map(function (col) {
-          return escape(col.title);
-        }));
-        return csvRows.map(function (row) {
-          return row.join(self.csv.separator) + '\r\n';
-        }).join('');
-      };
-
-      $scope.$watch('table', function () {
-        const table = $scope.table;
-
-        if (!table) {
-          $scope.rows = null;
-          $scope.formattedColumns = null;
-          return;
-        }
-
-        self.csv.filename = ($scope.exportTitle || table.title || 'unsaved') + '.csv';
-        $scope.rows = table.rows;
-        $scope.formattedColumns = table.columns.map(function (col, i) {
-          const agg = col.aggConfig;
-          const field = agg.getField();
-          const formattedColumn = {
-            title: col.title,
-            filterable: field && field.filterable && agg.type.type === 'buckets',
-            titleAlignmentClass: col.titleAlignmentClass,
-            totalAlignmentClass: col.totalAlignmentClass
-          };
-          const last = i === table.columns.length - 1;
-
-          if (last || agg.type.type === 'metrics') {
-            formattedColumn.class = 'visualize-table-right';
-          }
-
-          let isFieldNumeric = false;
-          let isFieldDate = false;
-          const aggType = agg.type;
-
-          if (aggType && aggType.type === 'metrics') {
-            if (aggType.name === 'top_hits') {
-              if (agg.params.aggregate.value !== 'concat') {
-                // all other aggregate types for top_hits output numbers
-                // so treat this field as numeric
-                isFieldNumeric = true;
-              }
-            } else if (aggType.name === 'cardinality') {
-              // Unique count aggregations always produce a numeric value
-              isFieldNumeric = true;
-            } else if (field) {
-              // if the metric has a field, check if it is either number or date
-              isFieldNumeric = field.type === 'number';
-              isFieldDate = field.type === 'date';
-            } else {
-              // if there is no field, then it is count or similar so just say number
-              isFieldNumeric = true;
-            }
-          } else if (field) {
-            isFieldNumeric = field.type === 'number';
-            isFieldDate = field.type === 'date';
-          }
-
-          if (isFieldNumeric || isFieldDate || $scope.totalFunc === 'count') {
-            const sum = function (tableRows) {
-              return lodash__WEBPACK_IMPORTED_MODULE_0___default.a.reduce(tableRows, function (prev, curr) {
-                // some metrics return undefined for some of the values
-                // derivative is an example of this as it returns undefined in the first row
-                if (curr[i].value === undefined) return prev;
-                return prev + curr[i].value;
-              }, 0);
-            };
-
-            const formatter = col.totalFormatter ? col.totalFormatter('text') : Object(_field_formatter__WEBPACK_IMPORTED_MODULE_4__["fieldFormatter"])(agg, 'text');
-
-            if (col.totalFormula !== undefined) {
-              formattedColumn.total = formatter(col.total);
-            } else {
-              switch ($scope.totalFunc) {
-                case 'sum':
-                  if (!isFieldDate) {
-                    formattedColumn.total = formatter(sum(table.rows));
-                  }
-
-                  break;
-
-                case 'avg':
-                  if (!isFieldDate) {
-                    formattedColumn.total = formatter(sum(table.rows) / table.rows.length);
-                  }
-
-                  break;
-
-                case 'min':
-                  formattedColumn.total = formatter(lodash__WEBPACK_IMPORTED_MODULE_0___default.a.chain(table.rows).map(i).map('value').min().value());
-                  break;
-
-                case 'max':
-                  formattedColumn.total = formatter(lodash__WEBPACK_IMPORTED_MODULE_0___default.a.chain(table.rows).map(i).map('value').max().value());
-                  break;
-
-                case 'count':
-                  formattedColumn.total = numberFormatter(table.rows.length);
-                  break;
-
-                default:
-                  break;
-              }
-            }
-          }
-
-          if (i === 0 && table.totalLabel !== undefined && table.columns.length > 0 && formattedColumn.total === undefined) {
-            formattedColumn.total = table.totalLabel;
-          }
-
-          return formattedColumn;
-        });
-      });
-    }
-  };
-}
-
-/***/ }),
-
-/***/ "./public/agg_table/agg_table_group.html":
-/*!***********************************************!*\
-  !*** ./public/agg_table/agg_table_group.html ***!
-  \***********************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("<table ng-if=\"rows\" class=\"table kbnAggTable__group\" ng-repeat=\"table in rows\">\n  <thead>\n    <tr>\n      <th ng-if=\"table.tables\" scope=\"col\">\n        <span class=\"kbnAggTable__groupHeader\">{{ table.title }}</span>\n      </th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>\n        <kbn-network-agg-table-group\n          ng-if=\"table.tables\"\n          group=\"table\"\n          filter=\"filter\"\n          per-page=\"perPage\"\n          sort=\"sort\"\n          show-total=\"showTotal\"\n          total-func=\"totalFunc\"></kbn-network-agg-table-group>\n        <kbn-network-agg-table\n          ng-if=\"table.rows\"\n          filter=\"filter\"\n          table=\"table\"\n          export-title=\"exportTitle\"\n          per-page=\"perPage\"\n          sort=\"sort\"\n          show-total=\"showTotal\"\n          total-func=\"totalFunc\">\n        </kbn-network-agg-table>\n      </td>\n    </tr>\n  </tbody>\n</table>\n\n<table ng-if=\"columns\" class=\"table kbnAggTable__group\">\n  <thead>\n    <tr>\n      <th ng-repeat=\"table in columns\" ng-if=\"table.tables\" scope=\"col\">\n        <span class=\"kbnAggTable__groupHeader\">{{ table.title }}</span>\n      </th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td ng-repeat=\"table in columns\">\n        <kbn-network-agg-table-group\n          ng-if=\"table.tables\"\n          filter=\"filter\"\n          group=\"table\"\n          per-page=\"perPage\"\n          sort=\"sort\"\n          show-total=\"showTotal\"\n          total-func=\"totalFunc\"></kbn-network-agg-table-group>\n        <kbn-network-agg-table\n          ng-if=\"table.rows\"\n          filter=\"filter\"\n          table=\"table\"\n          export-title=\"exportTitle\"\n          per-page=\"perPage\"\n          sort=\"sort\"\n          show-total=\"showTotal\"\n          total-func=\"totalFunc\">\n        </kbn-network-agg-table>\n      </td>\n    </tr>\n  </tbody>\n</table>\n");
-
-/***/ }),
-
-/***/ "./public/agg_table/agg_table_group.js":
-/*!*********************************************!*\
-  !*** ./public/agg_table/agg_table_group.js ***!
-  \*********************************************/
-/*! exports provided: KbnNetworkAggTableGroup */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "KbnNetworkAggTableGroup", function() { return KbnNetworkAggTableGroup; });
-/* harmony import */ var _agg_table_group_html__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./agg_table_group.html */ "./public/agg_table/agg_table_group.html");
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-function KbnNetworkAggTableGroup(RecursionHelper) {
-  return {
-    restrict: 'E',
-    template: _agg_table_group_html__WEBPACK_IMPORTED_MODULE_0__["default"],
-    scope: {
-      group: '=',
-      perPage: '=?',
-      sort: '=?',
-      exportTitle: '=?',
-      showTotal: '=',
-      totalFunc: '=',
-      filter: '='
-    },
-    compile: function ($el) {
-      // Use the compile function from the RecursionHelper,
-      // And return the linking function(s) which it returns
-      return RecursionHelper.compile($el, {
-        post: function ($scope) {
-          $scope.$watch('group', function (group) {
-            // clear the previous "state"
-            $scope.rows = $scope.columns = false;
-            if (!group || !group.tables.length) return;
-            const firstTable = group.tables[0];
-            const params = firstTable.aggConfig && firstTable.aggConfig.params; // render groups that have Table children as if they were rows, because iteration is cleaner
-
-            const childLayout = params && !params.row ? 'columns' : 'rows';
-            $scope[childLayout] = group.tables;
-          });
-        }
-      });
-    }
-  };
-}
-
-/***/ }),
-
 /***/ "./public/components/kbn_network_vis_options_lazy.tsx":
 /*!************************************************************!*\
   !*** ./public/components/kbn_network_vis_options_lazy.tsx ***!
@@ -18219,17 +16726,26 @@ const KbnNetworkOptions = props => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0
 
 /***/ }),
 
-/***/ "./public/data_load/agg_config_result.js":
-/*!***********************************************!*\
-  !*** ./public/data_load/agg_config_result.js ***!
-  \***********************************************/
-/*! exports provided: default */
+/***/ "./public/components/network_vis.tsx":
+/*!*******************************************!*\
+  !*** ./public/components/network_vis.tsx ***!
+  \*******************************************/
+/*! exports provided: NetworkVis */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return AggConfigResult; });
-/* harmony import */ var _field_formatter__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../field_formatter */ "./public/field_formatter.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NetworkVis", function() { return NetworkVis; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var randomcolor__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! randomcolor */ "./node_modules/randomcolor/randomColor.js");
+/* harmony import */ var randomcolor__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(randomcolor__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _elastic_eui__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @elastic/eui */ "@elastic/eui");
+/* harmony import */ var _elastic_eui__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_elastic_eui__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var vis_network__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! vis-network */ "./node_modules/vis-network/peer/umd/vis-network.min.js");
+/* harmony import */ var vis_network__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(vis_network__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */ var _services__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./../services */ "./public/services.ts");
+/* harmony import */ var _network_vis_legend__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./network_vis_legend */ "./public/components/network_vis_legend.tsx");
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -18250,62 +16766,644 @@ __webpack_require__.r(__webpack_exports__);
  */
 
 
-function computeBasePath(pathname) {
-  const endIndex = pathname ? pathname.indexOf('/app/kibana') : -1;
-  const basePath = endIndex !== -1 ? pathname.substring(0, endIndex) : '';
-  return basePath;
-} // eslint-disable-next-line import/no-default-export
 
 
-function AggConfigResult(aggConfig, parent, value, key, filters) {
-  this.key = key;
-  this.value = value;
-  this.aggConfig = aggConfig;
-  this.filters = filters;
-  this.$parent = parent;
-
-  if (aggConfig.type.type === 'buckets') {
-    this.type = 'bucket';
-  } else {
-    this.type = 'metric';
-  }
-}
-/**
- * Returns an array of the aggConfigResult and parents up the branch
- * @returns {array} Array of aggConfigResults
- */
-
-AggConfigResult.prototype.getPath = function () {
-  return function walk(result, path) {
-    path.unshift(result);
-    if (result.$parent) return walk(result.$parent, path);
-    return path;
-  }(this, []);
-};
-/**
- * Returns an Elasticsearch filter that represents the result.
- * @returns {object} Elasticsearch filter
- */
 
 
-AggConfigResult.prototype.createFilter = function () {
-  return this.filters || this.aggConfig.createFilter(this.key);
-};
-
-AggConfigResult.prototype.toString = function (contentType) {
-  const parsedUrl = {
-    origin: window.location.origin,
-    pathname: window.location.pathname,
-    basePath: computeBasePath(window.location.pathname)
-  };
+const NetworkVis = _ref => {
+  let {
+    vis,
+    visData,
+    visParams
+  } = _ref;
+  const {
+    toasts
+  } = Object(_services__WEBPACK_IMPORTED_MODULE_4__["getNotifications"])();
+  const container = Object(react__WEBPACK_IMPORTED_MODULE_0__["useRef"])(null);
+  const [colorDicc, setColorDicc] = Object(react__WEBPACK_IMPORTED_MODULE_0__["useState"])(vis.uiState.get('vis.colors', {}));
+  const defaultPalette = Object(_elastic_eui__WEBPACK_IMPORTED_MODULE_2__["euiPaletteColorBlind"])({
+    rotations: 2
+  });
+  const usedColors = [];
+  const buckets = visData.rows;
   const options = {
-    parsedUrl
+    physics: {
+      barnesHut: {
+        gravitationalConstant: visParams.gravitationalConstant,
+        springConstant: visParams.springConstant
+      }
+    },
+    edges: {
+      arrows: {
+        [visParams.posArrow]: {
+          enabled: visParams.displayArrow,
+          scaleFactor: visParams.scaleArrow,
+          type: visParams.shapeArrow
+        }
+      },
+      arrowStrikethrough: false,
+      smooth: {
+        type: visParams.smoothType
+      },
+      scaling: {
+        min: visParams.minEdgeSize,
+        max: visParams.maxEdgeSize
+      }
+    },
+    nodes: {
+      physics: visParams.nodePhysics,
+      scaling: {
+        min: visParams.minNodeSize,
+        max: visParams.maxNodeSize
+      }
+    },
+    interaction: {
+      hover: true,
+      tooltipDelay: 50
+    },
+    manipulation: {
+      enabled: true
+    },
+    layout: {
+      improvedLayout: true
+    }
   };
-  return Object(_field_formatter__WEBPACK_IMPORTED_MODULE_0__["fieldFormatter"])(this.aggConfig, contentType)(this.value, options);
+  let firstFirstBucketId;
+  let firstSecondBucketId;
+  let secondBucketId;
+  let colorBucketId;
+  let nodeSizeId;
+  let edgeSizeId; // constiables for agg ids, ex. id: "3" from one of the aggs (currently in vis.aggs)
+
+  let edgeSizeAggId; // constiables for tooltip text
+
+  let primaryNodeTermName;
+  let secondaryNodeTermName;
+  let edgeSizeTermName;
+  let nodeSizeTermName;
+  let nodes = [];
+  let edges = [];
+  Object(react__WEBPACK_IMPORTED_MODULE_0__["useEffect"])(() => {
+    container.current && new vis_network__WEBPACK_IMPORTED_MODULE_3__["Network"](container.current, {
+      nodes,
+      edges
+    }, options);
+  }, [container, nodes, edges]);
+  Object(react__WEBPACK_IMPORTED_MODULE_0__["useEffect"])(() => {
+    vis.uiState.set('vis.colors', colorDicc);
+  }, [colorDicc]);
+
+  function getTooltipTitle(termName, termValue) {
+    let sizeTerm = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
+    let sizeValue = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+    let tooltipTitle = termName + ': ' + termValue;
+
+    if (sizeTerm !== null) {
+      tooltipTitle += '<br/>' + sizeTerm + ': ' + sizeValue;
+    }
+
+    return tooltipTitle;
+  }
+
+  const getColumnIdByAggId = aggId => {
+    var _visData$columns;
+
+    return (_visData$columns = visData.columns) === null || _visData$columns === void 0 ? void 0 : _visData$columns.find(col => {
+      return col.id.split('-')[2] === aggId;
+    }).id;
+  };
+
+  function getColumnNameFromColumnId(columnId) {
+    var _visData$columns2;
+
+    return (_visData$columns2 = visData.columns) === null || _visData$columns2 === void 0 ? void 0 : _visData$columns2.find(colObj => colObj.id === columnId).name;
+  }
+
+  function getData() {
+    visData.aggs.aggs.forEach(agg => {
+      if (agg.schema === 'first') {
+        // firstSecondBucketId is the secondary node in a node-node
+        // it also has a schema name of 'first', so set it if the first node is already set
+        //
+        // The metric used to return both primary and secondary nodes will always contain a colon,
+        // since it will take the form of "metric: order", for example, "DestIP: Descending"
+        // This might look confusing in a tooltip, so only the term name is used here
+        if (firstFirstBucketId) {
+          firstSecondBucketId = getColumnIdByAggId(agg.id);
+          secondaryNodeTermName = getColumnNameFromColumnId(firstSecondBucketId).split(':')[0];
+        } else {
+          firstFirstBucketId = getColumnIdByAggId(agg.id);
+          primaryNodeTermName = getColumnNameFromColumnId(firstFirstBucketId).split(':')[0];
+        }
+      } else if (agg.schema === 'second') {
+        secondBucketId = getColumnIdByAggId(agg.id);
+      } else if (agg.schema === 'colornode') {
+        colorBucketId = getColumnIdByAggId(agg.id);
+      } else if (agg.schema === 'size_node') {
+        nodeSizeId = getColumnIdByAggId(agg.id);
+        nodeSizeTermName = getColumnNameFromColumnId(nodeSizeId);
+      } else if (agg.schema === 'size_edge') {
+        edgeSizeAggId = agg.id;
+      }
+    }); // Getting edge size id here to ensure all other buckets were located in the aggs already (future-proofing
+    // in case the order of the aggs being returned changes)
+
+    if (edgeSizeAggId) {
+      if (firstFirstBucketId && (firstSecondBucketId || secondBucketId)) {
+        edgeSizeId = 'col-5-' + edgeSizeAggId;
+        edgeSizeTermName = getColumnNameFromColumnId(edgeSizeId);
+      }
+    } // Single NODE or NODE-NODE Type
+
+
+    if ((firstFirstBucketId || firstSecondBucketId) && !secondBucketId) {
+      /// DATA PARSED AND BUILDING NODES
+      const dataParsed = []; // Iterate the buckets
+
+      let i = 0;
+      let dataNodes = buckets.map(function (bucket) {
+        const result = $.grep(dataParsed, function (e) {
+          return e.keyFirstNode === bucket[firstFirstBucketId];
+        }); // first time we've parsed a node with this id
+
+        if (result.length === 0) {
+          dataParsed[i] = {};
+          dataParsed[i].keyFirstNode = bucket[firstFirstBucketId];
+          let value = bucket[nodeSizeId];
+
+          if (visParams.maxCutMetricSizeNode) {
+            value = Math.min(visParams.maxCutMetricSizeNode, value);
+          } // Don't show nodes under the value
+
+
+          if (visParams.minCutMetricSizeNode > value) {
+            dataParsed.splice(i, 1);
+            return;
+          }
+
+          dataParsed[i].valorSizeNode = value;
+          dataParsed[i].nodeColorValue = 'default';
+          dataParsed[i].nodeColorKey = 'default';
+
+          if (!dataParsed[i].relationWithSecondNode) {
+            dataParsed[i].relationWithSecondNode = [];
+          } // Iterate rows and choose the edge size
+
+
+          if (firstSecondBucketId) {
+            let sizeEdgeVal = 0.1;
+
+            if (edgeSizeId) {
+              sizeEdgeVal = bucket[edgeSizeId];
+
+              if (visParams.maxCutMetricSizeEdge) {
+                sizeEdgeVal = Math.min(visParams.maxCutMetricSizeEdge, sizeEdgeVal);
+              }
+            }
+
+            const relation = {
+              keySecondNode: bucket[firstSecondBucketId],
+              countMetric: bucket[nodeSizeId],
+              widthOfEdge: sizeEdgeVal
+            };
+            dataParsed[i].relationWithSecondNode.push(relation);
+          }
+
+          if (colorBucketId) {
+            if (colorDicc[bucket[colorBucketId]]) {
+              dataParsed[i].nodeColorKey = bucket[colorBucketId];
+              dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
+              usedColors.push(colorDicc[bucket[colorBucketId]]);
+            } else {
+              const confirmColor = defaultPalette.find(color => Object.values(colorDicc).indexOf(color) === -1 && usedColors.indexOf(color) === -1) || randomcolor__WEBPACK_IMPORTED_MODULE_1___default()();
+              colorDicc[bucket[colorBucketId]] = confirmColor;
+              dataParsed[i].nodeColorKey = bucket[colorBucketId];
+              dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
+              usedColors.push(confirmColor);
+            }
+          }
+
+          let colorNodeFinal = visParams.firstNodeColor; // Assign color and the content of the popup
+
+          if (dataParsed[i].nodeColorValue !== 'default') {
+            colorNodeFinal = dataParsed[i].nodeColorValue;
+          }
+
+          i++; // Return the node totally built
+
+          const nodeReturn = {
+            id: i,
+            key: bucket[firstFirstBucketId],
+            color: colorNodeFinal,
+            shape: visParams.shapeFirstNode,
+            value: value,
+            font: {
+              color: visParams.labelColor
+            }
+          }; // If activated, show the labels
+
+          if (visParams.showLabels) {
+            nodeReturn.label = bucket[firstFirstBucketId];
+          } // If activated, show the popups
+
+
+          if (visParams.showPopup) {
+            nodeReturn.title = getTooltipTitle(primaryNodeTermName, bucket[firstFirstBucketId], nodeSizeTermName, nodeReturn.value);
+          }
+
+          return nodeReturn;
+        } else if (result.length === 1) {
+          // we already have this node id in dataNodes, so update with new info
+          const dataParsedNodeExist = result[0]; //Iterate rows and choose the edge size
+
+          if (firstSecondBucketId) {
+            let sizeEdgeVal = 0.1;
+
+            if (edgeSizeId) {
+              sizeEdgeVal = bucket[edgeSizeId];
+            }
+
+            const relation = {
+              keySecondNode: bucket[firstSecondBucketId],
+              countMetric: bucket[nodeSizeId],
+              widthOfEdge: sizeEdgeVal
+            };
+            dataParsedNodeExist.relationWithSecondNode.push(relation);
+          }
+
+          return undefined;
+        }
+      }); // Clean "undefined" out of the array
+
+      dataNodes = dataNodes.filter(Boolean); // BUILDING EDGES AND SECONDARY NODES
+
+      const dataEdges = [];
+
+      for (let n = 0; n < dataParsed.length; n++) {
+        // Find in the array the node with the keyFirstNode
+        const result = $.grep(dataNodes, function (e) {
+          return e.key === dataParsed[n].keyFirstNode;
+        });
+
+        if (result.length === 0) {
+          console.log('Network Plugin Error: Node not found');
+        } else if (result.length === 1) {
+          // Found the node, access to its id
+          if (firstSecondBucketId) {
+            for (let r = 0; r < dataParsed[n].relationWithSecondNode.length; r++) {
+              // Find in the relations the second node to relate
+              const nodeOfSecondType = $.grep(dataNodes, function (e) {
+                return e.key === dataParsed[n].relationWithSecondNode[r].keySecondNode;
+              });
+
+              if (nodeOfSecondType.length === 0) {
+                // This is the first time this secondary node has been processed
+                i++;
+                const secondaryNode = {
+                  id: i,
+                  key: dataParsed[n].relationWithSecondNode[r].keySecondNode,
+                  label: dataParsed[n].relationWithSecondNode[r].keySecondNode,
+                  color: visParams.secondNodeColor,
+                  font: {
+                    color: visParams.labelColor
+                  },
+                  shape: visParams.shapeSecondNode
+                };
+
+                if (visParams.showPopup) {
+                  secondaryNode.title = getTooltipTitle(secondaryNodeTermName, dataParsed[n].relationWithSecondNode[r].keySecondNode);
+                } // Add a new secondary node
+
+
+                dataNodes.push(secondaryNode); // Create a new edge between a primary and secondary node
+
+                const edge = {
+                  from: result[0].id,
+                  to: dataNodes[dataNodes.length - 1].id,
+                  value: dataParsed[n].relationWithSecondNode[r].widthOfEdge
+                };
+
+                if (visParams.showPopup && edgeSizeId) {
+                  edge.title = getTooltipTitle(edgeSizeTermName, dataParsed[n].relationWithSecondNode[r].widthOfEdge);
+                }
+
+                dataEdges.push(edge);
+              } else if (nodeOfSecondType.length === 1) {
+                // The secondary node being processed already exists,
+                //    only a new edge needs to be created
+                const enlace = {
+                  from: result[0].id,
+                  to: nodeOfSecondType[0].id,
+                  value: dataParsed[n].relationWithSecondNode[r].widthOfEdge
+                };
+
+                if (visParams.showPopup && edgeSizeId) {
+                  enlace.title = getTooltipTitle(edgeSizeTermName, dataParsed[n].relationWithSecondNode[r].widthOfEdge);
+                }
+
+                dataEdges.push(enlace);
+              } else {
+                console.log('Network Plugin Error: Multiple nodes with same id found');
+              }
+            }
+          }
+        } else {
+          console.log('Network Plugin Error: Multiple nodes with same id found');
+        }
+      }
+
+      nodes = dataNodes;
+      edges = dataEdges;
+
+      if (dataEdges.length > 200) {
+        Object.assign(options.layout, {
+          improvedLayout: false
+        });
+      }
+
+      console.log('Network Plugin: Create network now'); // NODE-RELATION Type
+    } else if (secondBucketId && !firstSecondBucketId) {
+      if (colorBucketId) {
+        // Check if "Node Color" is the last selection
+        if (colorBucketId <= secondBucketId) {
+          toasts.addDanger('Node Color must be the last selection');
+          return;
+        }
+      } // DATA PARSED AND BUILDING NODES
+
+
+      const dataParsed = []; // Iterate the buckets
+
+      let i = 0;
+      let dataNodes = buckets.map(function (bucket) {
+        const result = $.grep(dataParsed, function (e) {
+          return e.keyNode === bucket[firstFirstBucketId];
+        }); // first time we've parsed a node with this id
+
+        if (result.length === 0) {
+          dataParsed[i] = {};
+          dataParsed[i].keyNode = bucket[firstFirstBucketId];
+          let value = bucket[nodeSizeId];
+
+          if (vis.params.maxCutMetricSizeNode) {
+            value = Math.min(vis.params.maxCutMetricSizeNode, value);
+          } // Don't show nodes under the value
+
+
+          if (visParams.minCutMetricSizeNode > value) {
+            dataParsed.splice(i, 1);
+            return;
+          }
+
+          dataParsed[i].valorSizeNode = value;
+          dataParsed[i].nodeColorValue = 'default';
+          dataParsed[i].nodeColorKey = 'default';
+          dataParsed[i].relationWithSecondField = []; // Add relation edges
+
+          let sizeEdgeVal = 0.1;
+
+          if (edgeSizeId) {
+            sizeEdgeVal = bucket[edgeSizeId];
+
+            if (vis.params.maxCutMetricSizeEdge) {
+              sizeEdgeVal = Math.min(vis.params.maxCutMetricSizeEdge, sizeEdgeVal);
+            }
+          } // Get the color of the node, save in the dictionary
+
+
+          if (colorBucketId) {
+            if (colorDicc[bucket[colorBucketId]]) {
+              dataParsed[i].nodeColorKey = bucket[colorBucketId];
+              dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
+              usedColors.push(colorDicc[bucket[colorBucketId]]);
+            } else {
+              const confirmColor = defaultPalette.find(color => Object.values(colorDicc).indexOf(color) === -1 && usedColors.indexOf(color) === -1) || randomcolor__WEBPACK_IMPORTED_MODULE_1___default()();
+              colorDicc[bucket[colorBucketId]] = confirmColor;
+              dataParsed[i].nodeColorKey = bucket[colorBucketId];
+              dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
+              usedColors.push(confirmColor);
+            }
+          }
+
+          const relation = {
+            keyRelation: bucket[secondBucketId],
+            countMetric: bucket[nodeSizeId],
+            widthOfEdge: sizeEdgeVal
+          };
+          dataParsed[i].relationWithSecondField.push(relation);
+          let colorNodeFinal = visParams.firstNodeColor;
+
+          if (dataParsed[i].nodeColorValue !== 'default') {
+            colorNodeFinal = dataParsed[i].nodeColorValue;
+          }
+
+          i++; // Return the node totally built
+
+          const nodeReturn = {
+            id: i,
+            key: bucket[firstFirstBucketId],
+            color: colorNodeFinal,
+            shape: visParams.shapeFirstNode,
+            value: value,
+            font: {
+              color: visParams.labelColor
+            }
+          }; // If activated, show the labels
+
+          if (visParams.showLabels) {
+            nodeReturn.label = bucket[firstFirstBucketId];
+          } // If activated, show the popups
+
+
+          if (visParams.showPopup) {
+            nodeReturn.title = getTooltipTitle(primaryNodeTermName, bucket[firstFirstBucketId], nodeSizeTermName, nodeReturn.value);
+          }
+
+          return nodeReturn;
+        } else if (result.length === 1) {
+          // we already have this node id in dataNodes, so update with new info
+          const dataParsedNodeExist = result[0];
+          let sizeEdgeVal = 0.1;
+
+          if (edgeSizeId) {
+            sizeEdgeVal = bucket[edgeSizeId];
+          }
+
+          const relation = {
+            keyRelation: bucket[secondBucketId],
+            countMetric: bucket[nodeSizeId],
+            widthOfEdge: sizeEdgeVal
+          };
+          dataParsedNodeExist.relationWithSecondField.push(relation);
+          return undefined;
+        }
+      }); // BUILDING EDGES
+      // Clean "undefinded" in the array
+
+      dataNodes = dataNodes.filter(Boolean);
+      const dataEdges = []; // Iterate parsed nodes
+
+      for (let n = 0; n < dataParsed.length; n++) {
+        // Obtain id of the node
+        const NodoFrom = $.grep(dataNodes, function (e) {
+          return e.key === dataParsed[n].keyNode;
+        });
+
+        if (NodoFrom.length === 0) {
+          console.log('Network Plugin Error: Node not found');
+        } else if (NodoFrom.length === 1) {
+          const idFrom = NodoFrom[0].id; // Iterate relations that have with the second field selected
+
+          for (let p = 0; p < dataParsed[n].relationWithSecondField.length; p++) {
+            // Iterate again the nodes
+            for (let z = 0; z < dataParsed.length; z++) {
+              // Check that we don't compare the same node
+              if (dataParsed[n] !== dataParsed[z]) {
+                const NodoTo = $.grep(dataNodes, function (e) {
+                  return e.key === dataParsed[z].keyNode;
+                });
+
+                if (NodoTo.length === 0) {
+                  console.log('Network Plugin Error: Node not found');
+                } else if (NodoTo.length === 1) {
+                  const idTo = NodoTo[0].id; // Have relation?
+
+                  const sameRelation = $.grep(dataParsed[z].relationWithSecondField, function (e) {
+                    return e.keyRelation === dataParsed[n].relationWithSecondField[p].keyRelation;
+                  });
+
+                  if (sameRelation.length === 1) {
+                    // Nodes have a relation, creating the edge
+                    const edgeExist = $.grep(dataEdges, function (e) {
+                      return e.to === idFrom && e.from === idTo || e.to === idTo && e.from === idFrom;
+                    });
+
+                    if (edgeExist.length === 0) {
+                      // The size of the edge is the total of the common
+                      const sizeEdgeTotal = sameRelation[0].widthOfEdge + dataParsed[n].relationWithSecondField[p].widthOfEdge;
+                      const edge = {
+                        from: idFrom,
+                        to: idTo,
+                        value: sizeEdgeTotal
+                      };
+                      dataEdges.push(edge);
+                    }
+                  }
+                } else {
+                  console.log('Network Plugin Error: Multiples nodes with same id found');
+                }
+              }
+            }
+          }
+        } else {
+          console.log('Network Plugin Error: Multiples nodes with same id found');
+        }
+      }
+
+      nodes = dataNodes;
+      edges = dataEdges;
+      Object.assign(options, {
+        physics: {
+          barnesHut: {
+            gravitationalConstant: visParams.gravitationalConstant,
+            springConstant: visParams.springConstant,
+            springLength: 500
+          }
+        },
+        interaction: {
+          hideEdgesOnDrag: true,
+          hover: true,
+          tooltipDelay: 100
+        },
+        layout: {
+          improvedLayout: false
+        }
+      });
+      console.log('Network Plugin: Create network now');
+    } else if (secondBucketId && firstSecondBucketId) {
+      toasts.addDanger('You can only choose Node-Node or Node-Relation');
+    }
+  }
+
+  getData();
+  return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(react__WEBPACK_IMPORTED_MODULE_0___default.a.Fragment, null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
+    ref: container,
+    style: {
+      height: '100%',
+      width: '100%'
+    }
+  }), colorBucketId && visParams.showColorLegend ? /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_network_vis_legend__WEBPACK_IMPORTED_MODULE_5__["Legend"], {
+    colorDicc: colorDicc,
+    setColorDicc: setColorDicc,
+    usedColors: usedColors,
+    uiState: vis.uiState
+  }) : null);
 };
 
-AggConfigResult.prototype.valueOf = function () {
-  return this.value;
+/***/ }),
+
+/***/ "./public/components/network_vis_legend.tsx":
+/*!**************************************************!*\
+  !*** ./public/components/network_vis_legend.tsx ***!
+  \**************************************************/
+/*! exports provided: Legend */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Legend", function() { return Legend; });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _elastic_eui__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @elastic/eui */ "@elastic/eui");
+/* harmony import */ var _elastic_eui__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_elastic_eui__WEBPACK_IMPORTED_MODULE_1__);
+
+
+const Legend = _ref => {
+  let {
+    colorDicc,
+    setColorDicc,
+    usedColors,
+    uiState
+  } = _ref;
+  const defaultPalette = Object(_elastic_eui__WEBPACK_IMPORTED_MODULE_1__["ouiPaletteColorBlind"])({
+    rotations: 2
+  });
+
+  const saveColors = event => {
+    event.persist();
+    const copy = uiState.get('vis.colors', {});
+    copy[event.target.id] = event.target.value;
+    uiState.set('vis.colors', copy);
+    setColorDicc(copy);
+  };
+
+  const options = defaultPalette.map(color => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("option", {
+    key: color
+  }, color));
+  const colorList = Object.keys(colorDicc).filter(key => usedColors.find(color => color === colorDicc[key]));
+  const listItems = colorList.map(colorKey => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("li", {
+    key: colorKey,
+    className: "vis-network-legend-line"
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("input", {
+    type: "color",
+    list: "color-datalist",
+    id: colorKey,
+    name: colorKey,
+    value: colorDicc[colorKey],
+    onChange: saveColors
+  }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("label", {
+    htmlFor: colorKey
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
+    className: "vis-network-legend-color",
+    style: {
+      backgroundColor: colorDicc[colorKey]
+    }
+  }), colorKey), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("datalist", {
+    id: "color-datalist"
+  }, options)));
+  return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("ul", {
+    className: "vis-network-legend"
+  }, listItems);
 };
 
 /***/ }),
@@ -18350,17 +17448,18 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-async function kbnNetworkRequestHandler({
-  partialRows,
-  metricsAtAllLevels,
-  visParams,
-  timeRange,
-  query,
-  filters,
-  inspectorAdapters,
-  forceFetch,
-  aggs
-}) {
+async function kbnNetworkRequestHandler(_ref) {
+  let {
+    partialRows,
+    metricsAtAllLevels,
+    visParams,
+    timeRange,
+    query,
+    filters,
+    inspectorAdapters,
+    forceFetch,
+    aggs
+  } = _ref;
   const {
     filterManager
   } = Object(_services__WEBPACK_IMPORTED_MODULE_2__["getQueryService"])(); // create search source with query parameters
@@ -18448,142 +17547,6 @@ async function kbnNetworkRequestHandler({
 
 /***/ }),
 
-/***/ "./public/data_load/kbn-network-response-handler.js":
-/*!**********************************************************!*\
-  !*** ./public/data_load/kbn-network-response-handler.js ***!
-  \**********************************************************/
-/*! exports provided: kbnNetworkResponseHandler */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "kbnNetworkResponseHandler", function() { return kbnNetworkResponseHandler; });
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ "lodash");
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _agg_config_result__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./agg_config_result */ "./public/data_load/agg_config_result.js");
-/* harmony import */ var _field_formatter__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../field_formatter */ "./public/field_formatter.ts");
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-
-
-/**
- * Takes an array of tabified rows and splits them by column value:
- *
- * const rows = [
- *   { col-1: 'foo', col-2: 'X' },
- *   { col-1: 'bar', col-2: 50 },
- *   { col-1: 'baz', col-2: 'X' },
- * ];
- * const splitRows = splitRowsOnColumn(rows, 'col-2');
- * splitRows.results; // ['X', 50];
- * splitRows.rowsGroupedByResult; // { X: [{ col-1: 'foo' }, { col-1: 'baz' }], 50: [{ col-1: 'bar' }] }
- */
-
-function splitRowsOnColumn(rows, columnId) {
-  const resultsMap = {}; // Used to preserve types, since object keys are always converted to strings.
-
-  return {
-    rowsGroupedByResult: rows.reduce((acc, row) => {
-      const {
-        [columnId]: splitValue,
-        ...rest
-      } = row;
-      resultsMap[splitValue] = splitValue;
-      acc[splitValue] = [...(acc[splitValue] || []), rest];
-      return acc;
-    }, {}),
-    results: Object.values(resultsMap)
-  };
-}
-
-function splitTable(columns, rows, $parent) {
-  const splitColumn = columns.find(column => Object(lodash__WEBPACK_IMPORTED_MODULE_0__["get"])(column, 'aggConfig.schema') === 'split');
-
-  if (!splitColumn) {
-    return [{
-      $parent,
-      columns: columns.map(column => ({
-        title: column.name,
-        ...column
-      })),
-      rows: rows.map((row, rowIndex) => {
-        const newRow = columns.map(column => {
-          const aggConfigResult = new _agg_config_result__WEBPACK_IMPORTED_MODULE_1__["default"](column.aggConfig, $parent, row[column.id], row[column.id]);
-          aggConfigResult.rawData = {
-            table: {
-              columns,
-              rows
-            },
-            column: columns.findIndex(c => c.id === column.id),
-            row: rowIndex
-          };
-          return aggConfigResult;
-        });
-        columns.forEach(column => newRow[column.id] = row[column.id]);
-        return newRow;
-      })
-    }];
-  }
-
-  const splitColumnIndex = columns.findIndex(column => column.id === splitColumn.id);
-  const splitRows = splitRowsOnColumn(rows, splitColumn.id); // Check if there are buckets after the first metric.
-
-  const firstMetricsColumnIndex = columns.findIndex(column => Object(lodash__WEBPACK_IMPORTED_MODULE_0__["get"])(column, 'aggConfig.type.type') === 'metrics');
-  const lastBucketsColumnIndex = Object(lodash__WEBPACK_IMPORTED_MODULE_0__["findLastIndex"])(columns, column => Object(lodash__WEBPACK_IMPORTED_MODULE_0__["get"])(column, 'aggConfig.type.type') === 'buckets');
-  const metricsAtAllLevels = firstMetricsColumnIndex < lastBucketsColumnIndex; // Calculate metrics:bucket ratio.
-
-  const numberOfMetrics = columns.filter(column => Object(lodash__WEBPACK_IMPORTED_MODULE_0__["get"])(column, 'aggConfig.type.type') === 'metrics').length;
-  const numberOfBuckets = columns.filter(column => Object(lodash__WEBPACK_IMPORTED_MODULE_0__["get"])(column, 'aggConfig.type.type') === 'buckets').length;
-  const metricsPerBucket = numberOfMetrics / numberOfBuckets;
-  const filteredColumns = columns.filter((column, i) => {
-    const isSplitColumn = i === splitColumnIndex;
-    const isSplitMetric = metricsAtAllLevels && i > splitColumnIndex && i <= splitColumnIndex + metricsPerBucket;
-    return !isSplitColumn && !isSplitMetric;
-  }).map(column => ({
-    title: column.name,
-    ...column
-  }));
-  return splitRows.results.map(splitValue => {
-    const $newParent = new _agg_config_result__WEBPACK_IMPORTED_MODULE_1__["default"](splitColumn.aggConfig, $parent, splitValue, splitValue);
-    return {
-      $parent: $newParent,
-      aggConfig: splitColumn.aggConfig,
-      title: `${Object(_field_formatter__WEBPACK_IMPORTED_MODULE_2__["fieldFormatter"])(splitColumn.aggConfig)(splitValue)}: ${splitColumn.aggConfig.makeLabel()}`,
-      key: splitValue,
-      // Recurse with filtered data to continue the search for additional split columns.
-      tables: splitTable(filteredColumns, splitRows.rowsGroupedByResult[splitValue], $newParent)
-    };
-  });
-}
-
-function kbnNetworkResponseHandler(response) {
-  return {
-    tables: splitTable(response.columns, response.rows, null),
-    totalHits: response.totalHits,
-    aggs: response.aggs,
-    newResponse: true
-  };
-}
-
-/***/ }),
-
 /***/ "./public/data_load/kibana_cloned_code/build_tabular_inspector_data.ts":
 /*!*****************************************************************************!*\
   !*** ./public/data_load/kibana_cloned_code/build_tabular_inspector_data.ts ***!
@@ -18594,7 +17557,7 @@ function kbnNetworkResponseHandler(response) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "buildTabularInspectorData", function() { return buildTabularInspectorData; });
-/* harmony import */ var _elastic_safer_lodash_set__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @elastic/safer-lodash-set */ "../../packages/elastic-safer-lodash-set/index.js");
+/* harmony import */ var _elastic_safer_lodash_set__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @elastic/safer-lodash-set */ "../../packages/opensearch-safer-lodash-set/index.js");
 /* harmony import */ var _elastic_safer_lodash_set__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_elastic_safer_lodash_set__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var _src_plugins_inspector_public__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../../../src/plugins/inspector/public */ "plugin/inspector/public");
 /* harmony import */ var _src_plugins_inspector_public__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_inspector_public__WEBPACK_IMPORTED_MODULE_1__);
@@ -18621,10 +17584,11 @@ __webpack_require__.r(__webpack_exports__);
  * inspector. It will only be called when the data view in the inspector is opened.
  */
 
-async function buildTabularInspectorData(table, {
-  queryFilter,
-  deserializeFieldFormat
-}) {
+async function buildTabularInspectorData(table, _ref) {
+  let {
+    queryFilter,
+    deserializeFieldFormat
+  } = _ref;
   const aggConfigs = table.columns.map(column => column.aggConfig);
   const rows = table.rows.map(row => {
     return table.columns.reduce((prev, cur, colIndex) => {
@@ -18696,10 +17660,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "handleCourierRequest", function() { return handleCourierRequest; });
 /* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ "lodash");
 /* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _kbn_i18n__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @kbn/i18n */ "@kbn/i18n");
-/* harmony import */ var _kbn_i18n__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_kbn_i18n__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../../../src/plugins/kibana_utils/public */ "plugin/kibanaUtils/public");
-/* harmony import */ var _src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _osd_i18n__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @osd/i18n */ "@osd/i18n");
+/* harmony import */ var _osd_i18n__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_osd_i18n__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../../../src/plugins/opensearch_dashboards_utils/public */ "plugin/opensearchDashboardsUtils/public");
+/* harmony import */ var _src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_2__);
 /* harmony import */ var _src_plugins_data_common__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../../../src/plugins/data/common */ "plugin/data/common");
 /* harmony import */ var _src_plugins_data_common__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_data_common__WEBPACK_IMPORTED_MODULE_3__);
 /* harmony import */ var _build_tabular_inspector_data__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./build_tabular_inspector_data */ "./public/data_load/kibana_cloned_code/build_tabular_inspector_data.ts");
@@ -18718,23 +17682,24 @@ __webpack_require__.r(__webpack_exports__);
  * Components: RequestHandlerParams and handleCourierRequest
  */
 
-const handleCourierRequest = async ({
-  searchSource,
-  aggs,
-  timeRange,
-  timeFields,
-  indexPattern,
-  query,
-  filters,
-  forceFetch,
-  partialRows,
-  metricsAtAllLevels,
-  inspectorAdapters,
-  filterManager,
-  abortSignal
-}) => {
+const handleCourierRequest = async _ref => {
   var _indexPattern$getTime;
 
+  let {
+    searchSource,
+    aggs,
+    timeRange,
+    timeFields,
+    indexPattern,
+    query,
+    filters,
+    forceFetch,
+    partialRows,
+    metricsAtAllLevels,
+    inspectorAdapters,
+    filterManager,
+    abortSignal
+  } = _ref;
   // Create a new search source that inherits the original search source
   // but has the appropriate timeRange applied via a filter.
   // This is a temporary solution until we properly pass down all required
@@ -18785,17 +17750,17 @@ const handleCourierRequest = async ({
   requestSearchSource.setField('filter', filters);
   requestSearchSource.setField('query', query);
   const reqBody = await requestSearchSource.getSearchRequestBody();
-  const queryHash = Object(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_2__["calculateObjectHash"])(reqBody); // We only need to reexecute the query, if forceFetch was true or the hash of the request body has changed
+  const queryHash = Object(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_2__["calculateObjectHash"])(reqBody); // We only need to reexecute the query, if forceFetch was true or the hash of the request body has changed
   // since the last request
 
   const shouldQuery = forceFetch || searchSource.lastQuery !== queryHash;
 
   if (shouldQuery) {
     inspectorAdapters.requests.reset();
-    const request = inspectorAdapters.requests.start(_kbn_i18n__WEBPACK_IMPORTED_MODULE_1__["i18n"].translate('data.functions.esaggs.inspector.dataRequest.title', {
+    const request = inspectorAdapters.requests.start(_osd_i18n__WEBPACK_IMPORTED_MODULE_1__["i18n"].translate('data.functions.esaggs.inspector.dataRequest.title', {
       defaultMessage: 'Data'
     }), {
-      description: _kbn_i18n__WEBPACK_IMPORTED_MODULE_1__["i18n"].translate('data.functions.esaggs.inspector.dataRequest.description', {
+      description: _osd_i18n__WEBPACK_IMPORTED_MODULE_1__["i18n"].translate('data.functions.esaggs.inspector.dataRequest.description', {
         defaultMessage: 'This request queries Elasticsearch to fetch the data for the visualization.'
       })
     });
@@ -18846,7 +17811,7 @@ const handleCourierRequest = async ({
       timeFields: allTimeFields
     } : undefined
   };
-  const tabifyCacheHash = Object(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_2__["calculateObjectHash"])({
+  const tabifyCacheHash = Object(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_2__["calculateObjectHash"])({
     tabifyAggs: aggs,
     ...tabifyParams
   }); // We only need to reexecute tabify, if either we did a new request or some input params to tabify changed
@@ -18962,127 +17927,6 @@ function serializeAggConfig(aggConfig) {
 
 /***/ }),
 
-/***/ "./public/field_formatter.ts":
-/*!***********************************!*\
-  !*** ./public/field_formatter.ts ***!
-  \***********************************/
-/*! exports provided: fieldFormatter */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "fieldFormatter", function() { return fieldFormatter; });
-/* harmony import */ var _services__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./services */ "./public/services.ts");
-
-
-/**
- * Returns the fieldFormatter function associated to aggConfig, for the requested contentType (html or text).
- * Returned fieldFormatter is a function, whose prototype is: fieldFormatter(value, options?)
- */
-function fieldFormatter(aggConfig, contentType) {
-  const fieldFormat = Object(_services__WEBPACK_IMPORTED_MODULE_0__["getFormatService"])().deserialize(aggConfig.toSerializedFieldFormat());
-  return fieldFormat.getConverterFor(contentType);
-}
-
-/***/ }),
-
-/***/ "./public/get_inner_angular.ts":
-/*!*************************************!*\
-  !*** ./public/get_inner_angular.ts ***!
-  \*************************************/
-/*! exports provided: getAngularModule, getInnerAngular */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getAngularModule", function() { return getAngularModule; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getInnerAngular", function() { return getInnerAngular; });
-/* harmony import */ var angular__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! angular */ "angular");
-/* harmony import */ var angular__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(angular__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var angular_sanitize__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! angular-sanitize */ "../../node_modules/angular-sanitize/index.js");
-/* harmony import */ var angular_sanitize__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(angular_sanitize__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var angular_recursion__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! angular-recursion */ "../../node_modules/angular-recursion/angular-recursion.js");
-/* harmony import */ var angular_recursion__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(angular_recursion__WEBPACK_IMPORTED_MODULE_2__);
-/* harmony import */ var _kbn_i18n_angular__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @kbn/i18n/angular */ "@kbn/i18n/angular");
-/* harmony import */ var _kbn_i18n_angular__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(_kbn_i18n_angular__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var _src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../../../src/plugins/kibana_legacy/public */ "plugin/kibanaLegacy/public");
-/* harmony import */ var _src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__);
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-// inner angular imports
-// these are necessary to bootstrap the local angular.
-// They can stay even after NP cutover
- // required for `ngSanitize` angular module
-
-
-
-
-
-Object(_src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__["initAngularBootstrap"])();
-const thirdPartyAngularDependencies = ['ngSanitize', 'ui.bootstrap', 'RecursionHelper'];
-function getAngularModule(name, core, context) {
-  const uiModule = getInnerAngular(name, core);
-  return uiModule;
-}
-let initialized = false;
-function getInnerAngular(name = 'kibana/kbn_network_vis', core) {
-  if (!initialized) {
-    createLocalPrivateModule();
-    createLocalI18nModule();
-    createLocalConfigModule(core.uiSettings);
-    createLocalPaginateModule();
-    initialized = true;
-  }
-
-  return angular__WEBPACK_IMPORTED_MODULE_0___default.a.module(name, [...thirdPartyAngularDependencies, 'tableVisPaginate', 'tableVisConfig', 'tableVisPrivate', 'tableVisI18n']).config(_src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__["watchMultiDecorator"]).directive('kbnAccessibleClick', _src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__["KbnAccessibleClickProvider"]);
-}
-
-function createLocalPrivateModule() {
-  angular__WEBPACK_IMPORTED_MODULE_0___default.a.module('tableVisPrivate', []).provider('Private', _src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__["PrivateProvider"]);
-}
-
-function createLocalConfigModule(uiSettings) {
-  angular__WEBPACK_IMPORTED_MODULE_0___default.a.module('tableVisConfig', []).provider('config', function () {
-    return {
-      $get: () => ({
-        get: value => {
-          return uiSettings ? uiSettings.get(value) : undefined;
-        },
-        // set method is used in agg_table mocha test
-        set: (key, value) => {
-          return uiSettings ? uiSettings.set(key, value) : undefined;
-        }
-      })
-    };
-  });
-}
-
-function createLocalI18nModule() {
-  angular__WEBPACK_IMPORTED_MODULE_0___default.a.module('tableVisI18n', []).provider('i18n', _kbn_i18n_angular__WEBPACK_IMPORTED_MODULE_3__["I18nProvider"]).filter('i18n', _kbn_i18n_angular__WEBPACK_IMPORTED_MODULE_3__["i18nFilter"]).directive('i18nId', _kbn_i18n_angular__WEBPACK_IMPORTED_MODULE_3__["i18nDirective"]);
-}
-
-function createLocalPaginateModule() {
-  angular__WEBPACK_IMPORTED_MODULE_0___default.a.module('tableVisPaginate', []).directive('paginate', _src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__["PaginateDirectiveProvider"]).directive('paginateControls', _src_plugins_kibana_legacy_public__WEBPACK_IMPORTED_MODULE_4__["PaginateControlsDirectiveProvider"]);
-}
-
-/***/ }),
-
 /***/ "./public/images/icon-network.svg":
 /*!****************************************!*\
   !*** ./public/images/icon-network.svg ***!
@@ -19102,7 +17946,7 @@ module.exports = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGlu
 /***/ (function(module, exports, __webpack_require__) {
 
 
-switch (window.__kbnThemeTag__) {
+switch (window.__osdThemeTag__) {
   case 'v7dark':
     return __webpack_require__(/*! ./index.scss?v7dark */ "./public/index.scss?v7dark");
 
@@ -19110,12 +17954,10 @@ switch (window.__kbnThemeTag__) {
     return __webpack_require__(/*! ./index.scss?v7light */ "./public/index.scss?v7light");
 
   case 'v8dark':
-    console.error(new Error("SASS files in [kbnNetwork] were not built for theme [v8dark]. Styles were compiled using the [v7dark] theme instead to keep Kibana somewhat usable. Please adjust the advanced settings to make use of [v7dark,v7light] or make sure the KBN_OPTIMIZER_THEMES environment variable includes [v8dark] in a comma separated list of themes you want to compile. You can also set it to \"*\" to build all themes."));
-    return __webpack_require__(/*! ./index.scss?v7dark */ "./public/index.scss?v7dark")
+    return __webpack_require__(/*! ./index.scss?v8dark */ "./public/index.scss?v8dark");
 
   case 'v8light':
-    console.error(new Error("SASS files in [kbnNetwork] were not built for theme [v8light]. Styles were compiled using the [v7light] theme instead to keep Kibana somewhat usable. Please adjust the advanced settings to make use of [v7dark,v7light] or make sure the KBN_OPTIMIZER_THEMES environment variable includes [v8light] in a comma separated list of themes you want to compile. You can also set it to \"*\" to build all themes."));
-    return __webpack_require__(/*! ./index.scss?v7light */ "./public/index.scss?v7light")
+    return __webpack_require__(/*! ./index.scss?v8light */ "./public/index.scss?v8light");
 }
 
 /***/ }),
@@ -19128,7 +17970,7 @@ switch (window.__kbnThemeTag__) {
 /***/ (function(module, exports, __webpack_require__) {
 
 var api = __webpack_require__(/*! ../../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
-            var content = __webpack_require__(/*! !../../../node_modules/css-loader/dist/cjs.js??ref--6-oneOf-0-1!../../../node_modules/postcss-loader/src??ref--6-oneOf-0-2!../../../node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-0-3!./index.scss?v7dark */ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/src/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7dark");
+            var content = __webpack_require__(/*! !../../../node_modules/css-loader/dist/cjs.js??ref--6-oneOf-0-1!../../../node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-0-2!../../../node_modules/comment-stripper??ref--6-oneOf-0-3!../../../node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-0-4!./index.scss?v7dark */ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7dark");
 
             content = content.__esModule ? content.default : content;
 
@@ -19143,11 +17985,9 @@ options.singleton = false;
 
 var update = api(content, options);
 
-var exported = content.locals ? content.locals : {};
 
 
-
-module.exports = exported;
+module.exports = content.locals || {};
 
 /***/ }),
 
@@ -19159,7 +17999,7 @@ module.exports = exported;
 /***/ (function(module, exports, __webpack_require__) {
 
 var api = __webpack_require__(/*! ../../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
-            var content = __webpack_require__(/*! !../../../node_modules/css-loader/dist/cjs.js??ref--6-oneOf-1-1!../../../node_modules/postcss-loader/src??ref--6-oneOf-1-2!../../../node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-1-3!./index.scss?v7light */ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/src/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7light");
+            var content = __webpack_require__(/*! !../../../node_modules/css-loader/dist/cjs.js??ref--6-oneOf-1-1!../../../node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-1-2!../../../node_modules/comment-stripper??ref--6-oneOf-1-3!../../../node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-1-4!./index.scss?v7light */ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v7light");
 
             content = content.__esModule ? content.default : content;
 
@@ -19174,11 +18014,67 @@ options.singleton = false;
 
 var update = api(content, options);
 
-var exported = content.locals ? content.locals : {};
+
+
+module.exports = content.locals || {};
+
+/***/ }),
+
+/***/ "./public/index.scss?v8dark":
+/*!**********************************!*\
+  !*** ./public/index.scss?v8dark ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var api = __webpack_require__(/*! ../../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
+            var content = __webpack_require__(/*! !../../../node_modules/css-loader/dist/cjs.js??ref--6-oneOf-2-1!../../../node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-2-2!../../../node_modules/comment-stripper??ref--6-oneOf-2-3!../../../node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-2-4!./index.scss?v8dark */ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v8dark");
+
+            content = content.__esModule ? content.default : content;
+
+            if (typeof content === 'string') {
+              content = [[module.i, content, '']];
+            }
+
+var options = {};
+
+options.insert = "head";
+options.singleton = false;
+
+var update = api(content, options);
 
 
 
-module.exports = exported;
+module.exports = content.locals || {};
+
+/***/ }),
+
+/***/ "./public/index.scss?v8light":
+/*!***********************************!*\
+  !*** ./public/index.scss?v8light ***!
+  \***********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var api = __webpack_require__(/*! ../../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
+            var content = __webpack_require__(/*! !../../../node_modules/css-loader/dist/cjs.js??ref--6-oneOf-3-1!../../../node_modules/postcss-loader/dist/cjs.js??ref--6-oneOf-3-2!../../../node_modules/comment-stripper??ref--6-oneOf-3-3!../../../node_modules/sass-loader/dist/cjs.js??ref--6-oneOf-3-4!./index.scss?v8light */ "../../node_modules/css-loader/dist/cjs.js?!../../node_modules/postcss-loader/dist/cjs.js?!../../node_modules/comment-stripper/index.js?!../../node_modules/sass-loader/dist/cjs.js?!./public/index.scss?v8light");
+
+            content = content.__esModule ? content.default : content;
+
+            if (typeof content === 'string') {
+              content = [[module.i, content, '']];
+            }
+
+var options = {};
+
+options.insert = "head";
+options.singleton = false;
+
+var update = api(content, options);
+
+
+
+module.exports = content.locals || {};
 
 /***/ }),
 
@@ -19221,1614 +18117,6 @@ function plugin(initializerContext) {
 
 /***/ }),
 
-/***/ "./public/kbn-network-vis-controller.js":
-/*!**********************************************!*\
-  !*** ./public/kbn-network-vis-controller.js ***!
-  \**********************************************/
-/*! exports provided: KbnNetworkVisController */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "KbnNetworkVisController", function() { return KbnNetworkVisController; });
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ "lodash");
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var randomcolor__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! randomcolor */ "./node_modules/randomcolor/randomColor.js");
-/* harmony import */ var randomcolor__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(randomcolor__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var vis_network__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! vis-network */ "./node_modules/vis-network/peer/umd/vis-network.min.js");
-/* harmony import */ var vis_network__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(vis_network__WEBPACK_IMPORTED_MODULE_2__);
-/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! jquery */ "jquery");
-/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var _data_load_agg_config_result__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./data_load/agg_config_result */ "./public/data_load/agg_config_result.js");
-/* harmony import */ var _services__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./services */ "./public/services.ts");
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-
-
-
-
- // KbnNetworkVis AngularJS controller
-
-function KbnNetworkVisController($scope, config, $timeout) {
-  let networkId;
-  let loadingId;
-
-  $scope.errorNodeColor = function () {
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + networkId).hide();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + loadingId).hide();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#errorHtml').html('<h1><strong>ERROR</strong>: Node Color must be the LAST selection</h1>');
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#errorHtml').show();
-  };
-
-  $scope.errorNodeNodeRelation = function () {
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + networkId).hide();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + loadingId).hide();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#errorHtml').html('<h1><strong>ERROR</strong>: You can only choose Node-Node or Node-Relation</h1>');
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#errorHtml').show();
-  };
-
-  $scope.initialShows = function () {
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + networkId).show();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + loadingId).show();
-    jquery__WEBPACK_IMPORTED_MODULE_3___default()('#errorHtml').hide();
-  };
-
-  $scope.drawColorLegend = function (usedColors, colorDicc) {
-    const canvas = document.getElementsByTagName('canvas')[0];
-    const context = canvas.getContext('2d'); // Fill in text
-
-    context.fillStyle = 'black';
-    context.font = 'bold 30px Arial';
-    context.textAlign = 'start';
-    context.fillText('COLOR LEGEND:', canvas.width * -1, canvas.height * -1);
-    let height = 40; // adds a preliminary buffer for the legend title
-
-    let currentHeightOnCanvas = canvas.height * -1 + height;
-    let largestWidth = context.measureText('COLOR LEGEND:').width;
-
-    for (const key of Object.keys(colorDicc)) {
-      context.fillStyle = colorDicc[key];
-      context.font = 'bold 20px Arial';
-      context.fillText(key, canvas.width * -1, currentHeightOnCanvas);
-      height += 22;
-      currentHeightOnCanvas = canvas.height * -1 + height;
-      const currentWidth = context.measureText(key).width;
-
-      if (currentWidth > largestWidth) {
-        largestWidth = currentWidth;
-      }
-    } // Shade in the legend
-
-
-    context.fillStyle = 'rgba(218, 218, 218, 0.25)';
-    context.fillRect(canvas.width * -1 - 20, canvas.height * -1 - 40, largestWidth + 40, height + 60);
-  };
-
-  $scope.$watchMulti(['esResponse', 'visParams'], function ([resp]) {
-    // constiables for column ids, ex. id: "col-0-3" from one of the 'columns' in the resp
-    let firstFirstBucketId;
-    let firstSecondBucketId;
-    let secondBucketId;
-    let colorBucketId;
-    let nodeSizeId;
-    let edgeSizeId; // constiables for agg ids, ex. id: "3" from one of the aggs (currently in $scope.vis.aggs)
-
-    let edgeSizeAggId; // constiables for tooltip text
-
-    let primaryNodeTermName;
-    let secondaryNodeTermName;
-    let edgeSizeTermName;
-    let nodeSizeTermName;
-
-    function getTooltipTitle(termName, termValue, sizeTerm = null, sizeValue = null) {
-      let tooltipTitle = termName + ': ' + termValue;
-
-      if (sizeTerm !== null) {
-        tooltipTitle += '<br/>' + sizeTerm + ': ' + sizeValue;
-      }
-
-      return tooltipTitle;
-    }
-
-    if (resp) {
-      // helper function to get column id
-      const getColumnIdByAggId = function getColumnIdByAggId(aggId) {
-        return resp.tables[0].columns.find(function (col) {
-          return col.id.split('-')[2] === aggId;
-        }).id;
-      };
-
-      function getColumnNameFromColumnId(columnId) {
-        return resp.tables[0].columns.find(colObj => colObj.id === columnId).name;
-      }
-
-      resp.aggs.aggs.forEach(agg => {
-        if (agg.schema === 'first') {
-          // firstSecondBucketId is the secondary node in a node-node
-          // it also has a schema name of 'first', so set it if the first node is already set
-          //
-          // The metric used to return both primary and secondary nodes will always contain a colon,
-          // since it will take the form of "metric: order", for example, "DestIP: Descending"
-          // This might look confusing in a tooltip, so only the term name is used here
-          if (firstFirstBucketId) {
-            firstSecondBucketId = getColumnIdByAggId(agg.id);
-            secondaryNodeTermName = getColumnNameFromColumnId(firstSecondBucketId).split(':')[0];
-          } else {
-            firstFirstBucketId = getColumnIdByAggId(agg.id);
-            primaryNodeTermName = getColumnNameFromColumnId(firstFirstBucketId).split(':')[0];
-          }
-        } else if (agg.schema === 'second') {
-          secondBucketId = getColumnIdByAggId(agg.id);
-        } else if (agg.schema === 'colornode') {
-          colorBucketId = getColumnIdByAggId(agg.id);
-        } else if (agg.schema === 'size_node') {
-          nodeSizeId = getColumnIdByAggId(agg.id);
-          nodeSizeTermName = getColumnNameFromColumnId(nodeSizeId);
-        } else if (agg.schema === 'size_edge') {
-          edgeSizeAggId = agg.id;
-        }
-      }); // Getting edge size id here to ensure all other buckets were located in the aggs already (future-proofing
-      // in case the order of the aggs being returned changes)
-
-      if (edgeSizeAggId) {
-        if (firstFirstBucketId && (firstSecondBucketId || secondBucketId)) {
-          edgeSizeId = 'col-5-' + edgeSizeAggId;
-          edgeSizeTermName = getColumnNameFromColumnId(edgeSizeId);
-        }
-      } // Get the buckets of the aggregation
-
-
-      const buckets = resp.tables[0].rows;
-      const colorDicc = {};
-      const usedColors = []; // It is neccessary to add a timeout in order to have more than 1 net in the same dashboard
-
-      $timeout(function () {
-        networkId = 'net_' + $scope.$id;
-        loadingId = 'loading_' + $scope.$parent.$id;
-        jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + loadingId).hide(); // Single NODE or NODE-NODE Type
-
-        if ((firstFirstBucketId || firstSecondBucketId) && !secondBucketId) {
-          $scope.initialShows();
-          jquery__WEBPACK_IMPORTED_MODULE_3___default()('.secondNode').show(); /// DATA PARSED AND BUILDING NODES
-
-          const dataParsed = []; // Iterate the buckets
-
-          let i = 0;
-          let dataNodes = buckets.map(function (bucket) {
-            const result = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataParsed, function (e) {
-              return e.keyFirstNode === bucket[firstFirstBucketId];
-            }); // first time we've parsed a node with this id
-
-            if (result.length === 0) {
-              dataParsed[i] = {};
-              dataParsed[i].keyFirstNode = bucket[firstFirstBucketId];
-              const value = bucket[nodeSizeId]; // Don't show nodes under the value
-
-              if ($scope.visParams.minCutMetricSizeNode > value) {
-                dataParsed.splice(i, 1);
-                return;
-              }
-
-              dataParsed[i].valorSizeNode = value;
-              dataParsed[i].nodeColorValue = 'default';
-              dataParsed[i].nodeColorKey = 'default';
-
-              if (!dataParsed[i].relationWithSecondNode) {
-                dataParsed[i].relationWithSecondNode = [];
-              } // Iterate rows and choose the edge size
-
-
-              if (firstSecondBucketId) {
-                let sizeEdgeVal = 0.1;
-
-                if (edgeSizeId) {
-                  sizeEdgeVal = bucket[edgeSizeId];
-                }
-
-                const relation = {
-                  keySecondNode: bucket[firstSecondBucketId],
-                  countMetric: bucket[nodeSizeId],
-                  widthOfEdge: sizeEdgeVal
-                };
-                dataParsed[i].relationWithSecondNode.push(relation);
-              }
-
-              if (colorBucketId) {
-                if (colorDicc[bucket[colorBucketId]]) {
-                  dataParsed[i].nodeColorKey = bucket[colorBucketId];
-                  dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
-                } else {
-                  //repeat to find a NO-REPEATED color
-                  while (true) {
-                    const confirmColor = randomcolor__WEBPACK_IMPORTED_MODULE_1___default()();
-
-                    if (usedColors.indexOf(confirmColor) === -1) {
-                      colorDicc[bucket[colorBucketId]] = confirmColor;
-                      dataParsed[i].nodeColorKey = bucket[colorBucketId];
-                      dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
-                      usedColors.push(confirmColor);
-                      break;
-                    }
-                  }
-                }
-              }
-
-              let colorNodeFinal = $scope.visParams.firstNodeColor; // Assign color and the content of the popup
-
-              if (dataParsed[i].nodeColorValue !== 'default') {
-                colorNodeFinal = dataParsed[i].nodeColorValue;
-              }
-
-              i++; // Return the node totally built
-
-              const nodeReturn = {
-                id: i,
-                key: bucket[firstFirstBucketId],
-                color: colorNodeFinal,
-                shape: $scope.visParams.shapeFirstNode,
-                value: value,
-                font: {
-                  color: $scope.visParams.labelColor
-                }
-              }; // If activated, show the labels
-
-              if ($scope.visParams.showLabels) {
-                nodeReturn.label = bucket[firstFirstBucketId];
-              } // If activated, show the popups
-
-
-              if ($scope.visParams.showPopup) {
-                nodeReturn.title = getTooltipTitle(primaryNodeTermName, bucket[firstFirstBucketId], nodeSizeTermName, nodeReturn.value);
-              }
-
-              return nodeReturn;
-            } else if (result.length === 1) {
-              // we already have this node id in dataNodes, so update with new info
-              const dataParsedNodeExist = result[0]; //Iterate rows and choose the edge size
-
-              if (firstSecondBucketId) {
-                let sizeEdgeVal = 0.1;
-
-                if (edgeSizeId) {
-                  sizeEdgeVal = bucket[edgeSizeId];
-                }
-
-                const relation = {
-                  keySecondNode: bucket[firstSecondBucketId],
-                  countMetric: bucket[nodeSizeId],
-                  widthOfEdge: sizeEdgeVal
-                };
-                dataParsedNodeExist.relationWithSecondNode.push(relation);
-              }
-
-              return undefined;
-            }
-          }); // Clean "undefined" out of the array
-
-          dataNodes = dataNodes.filter(Boolean); // BUILDING EDGES AND SECONDARY NODES
-
-          const dataEdges = [];
-
-          for (let n = 0; n < dataParsed.length; n++) {
-            // Find in the array the node with the keyFirstNode
-            const result = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataNodes, function (e) {
-              return e.key === dataParsed[n].keyFirstNode;
-            });
-
-            if (result.length === 0) {
-              console.log('Network Plugin Error: Node not found');
-            } else if (result.length === 1) {
-              // Found the node, access to its id
-              if (firstSecondBucketId) {
-                for (let r = 0; r < dataParsed[n].relationWithSecondNode.length; r++) {
-                  // Find in the relations the second node to relate
-                  const nodeOfSecondType = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataNodes, function (e) {
-                    return e.key === dataParsed[n].relationWithSecondNode[r].keySecondNode;
-                  });
-
-                  if (nodeOfSecondType.length === 0) {
-                    // This is the first time this secondary node has been processed
-                    i++;
-                    const secondaryNode = {
-                      id: i,
-                      key: dataParsed[n].relationWithSecondNode[r].keySecondNode,
-                      label: dataParsed[n].relationWithSecondNode[r].keySecondNode,
-                      color: $scope.visParams.secondNodeColor,
-                      font: {
-                        color: $scope.visParams.labelColor
-                      },
-                      shape: $scope.visParams.shapeSecondNode
-                    };
-
-                    if ($scope.visParams.showPopup) {
-                      secondaryNode.title = getTooltipTitle(secondaryNodeTermName, dataParsed[n].relationWithSecondNode[r].keySecondNode);
-                    } // Add a new secondary node
-
-
-                    dataNodes.push(secondaryNode); // Create a new edge between a primary and secondary node
-
-                    const edge = {
-                      from: result[0].id,
-                      to: dataNodes[dataNodes.length - 1].id,
-                      value: dataParsed[n].relationWithSecondNode[r].widthOfEdge
-                    };
-
-                    if ($scope.visParams.showPopup && edgeSizeId) {
-                      edge.title = getTooltipTitle(edgeSizeTermName, dataParsed[n].relationWithSecondNode[r].widthOfEdge);
-                    }
-
-                    dataEdges.push(edge);
-                  } else if (nodeOfSecondType.length === 1) {
-                    // The secondary node being processed already exists,
-                    //    only a new edge needs to be created
-                    const enlace = {
-                      from: result[0].id,
-                      to: nodeOfSecondType[0].id,
-                      value: dataParsed[n].relationWithSecondNode[r].widthOfEdge
-                    };
-
-                    if ($scope.visParams.showPopup && edgeSizeId) {
-                      enlace.title = getTooltipTitle(edgeSizeTermName, dataParsed[n].relationWithSecondNode[r].widthOfEdge);
-                    }
-
-                    dataEdges.push(enlace);
-                  } else {
-                    console.log('Network Plugin Error: Multiple nodes with same id found');
-                  }
-                }
-              }
-            } else {
-              console.log('Network Plugin Error: Multiple nodes with same id found');
-            }
-          }
-
-          const container = document.getElementById(networkId); // container.style.height = String(container.getBoundingClientRect().height);
-          // container.height = String(container.getBoundingClientRect().height);
-
-          const data = {
-            nodes: dataNodes,
-            edges: dataEdges
-          }; // Options controlled by user directly
-
-          const options1 = {
-            // height: container.getBoundingClientRect().height.toString(),
-            physics: {
-              barnesHut: {
-                gravitationalConstant: $scope.visParams.gravitationalConstant,
-                springConstant: $scope.visParams.springConstant
-              }
-            },
-            edges: {
-              arrowStrikethrough: false,
-              smooth: {
-                type: $scope.visParams.smoothType
-              },
-              scaling: {
-                min: $scope.visParams.minEdgeSize,
-                max: $scope.visParams.maxEdgeSize
-              }
-            },
-            nodes: {
-              physics: $scope.visParams.nodePhysics,
-              scaling: {
-                min: $scope.visParams.minNodeSize,
-                max: $scope.visParams.maxNodeSize
-              }
-            },
-            layout: {
-              improvedLayout: !(dataEdges.length > 200)
-            },
-            interaction: {
-              hover: true,
-              tooltipDelay: 50
-            },
-            manipulation: {
-              enabled: true
-            }
-          };
-          let options2 = null;
-
-          switch ($scope.visParams.posArrow) {
-            case 'from':
-              options2 = {
-                edges: {
-                  arrows: {
-                    from: {
-                      enabled: $scope.visParams.displayArrow,
-                      scaleFactor: $scope.visParams.scaleArrow,
-                      type: $scope.visParams.shapeArrow
-                    }
-                  }
-                }
-              };
-              break;
-
-            case 'middle':
-              options2 = {
-                edges: {
-                  arrows: {
-                    middle: {
-                      enabled: $scope.visParams.displayArrow,
-                      scaleFactor: $scope.visParams.scaleArrow,
-                      type: $scope.visParams.shapeArrow
-                    }
-                  }
-                }
-              };
-              break;
-
-            case 'to':
-              options2 = {
-                edges: {
-                  arrows: {
-                    to: {
-                      enabled: $scope.visParams.displayArrow,
-                      scaleFactor: $scope.visParams.scaleArrow,
-                      type: $scope.visParams.shapeArrow
-                    }
-                  }
-                }
-              };
-              break;
-
-            default:
-              options2 = {
-                edges: {
-                  arrows: {
-                    from: {
-                      enabled: $scope.visParams.displayArrow,
-                      scaleFactor: $scope.visParams.scaleArrow,
-                      type: $scope.visParams.shapeArrow
-                    }
-                  }
-                }
-              };
-              break;
-          }
-
-          const options = angular.merge(options1, options2);
-          console.log('Network Plugin: Create network now');
-          const network = new vis_network__WEBPACK_IMPORTED_MODULE_2__["Network"](container, data, options);
-          network.on('afterDrawing', function () {
-            jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + loadingId).hide(); // Draw the color legend if Node Color is activated
-
-            if (colorBucketId && $scope.visParams.showColorLegend) {
-              $scope.drawColorLegend(usedColors, colorDicc);
-            }
-          }); // NODE-RELATION Type
-        } else if (secondBucketId && !firstSecondBucketId) {
-          $scope.initialShows();
-          jquery__WEBPACK_IMPORTED_MODULE_3___default()('.secondNode').hide();
-
-          if (colorBucketId) {
-            // Check if "Node Color" is the last selection
-            if (colorBucketId <= secondBucketId) {
-              $scope.errorNodeColor();
-              return;
-            }
-          } // DATA PARSED AND BUILDING NODES
-
-
-          const dataParsed = []; // Iterate the buckets
-
-          let i = 0;
-          let dataNodes = buckets.map(function (bucket) {
-            const result = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataParsed, function (e) {
-              return e.keyNode === bucket[firstFirstBucketId];
-            }); // first time we've parsed a node with this id
-
-            if (result.length === 0) {
-              dataParsed[i] = {};
-              dataParsed[i].keyNode = bucket[firstFirstBucketId];
-              const value = bucket[nodeSizeId]; // Don't show nodes under the value
-
-              if ($scope.visParams.minCutMetricSizeNode > value) {
-                dataParsed.splice(i, 1);
-                return;
-              }
-
-              dataParsed[i].valorSizeNode = value;
-              dataParsed[i].nodeColorValue = 'default';
-              dataParsed[i].nodeColorKey = 'default';
-              dataParsed[i].relationWithSecondField = []; // Add relation edges
-
-              let sizeEdgeVal = 0.1;
-
-              if (edgeSizeId) {
-                sizeEdgeVal = bucket[edgeSizeId];
-              } // Get the color of the node, save in the dictionary
-
-
-              if (colorBucketId) {
-                if (colorDicc[bucket[colorBucketId]]) {
-                  dataParsed[i].nodeColorKey = bucket[colorBucketId];
-                  dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
-                } else {
-                  // repeat to find a NO-REPEATED color
-                  while (true) {
-                    const confirmColor = randomcolor__WEBPACK_IMPORTED_MODULE_1___default()();
-
-                    if (usedColors.indexOf(confirmColor) === -1) {
-                      colorDicc[bucket[colorBucketId]] = confirmColor;
-                      dataParsed[i].nodeColorKey = bucket[colorBucketId];
-                      dataParsed[i].nodeColorValue = colorDicc[bucket[colorBucketId]];
-                      usedColors.push(confirmColor);
-                      break;
-                    }
-                  }
-                }
-              }
-
-              const relation = {
-                keyRelation: bucket[secondBucketId],
-                countMetric: bucket[nodeSizeId],
-                widthOfEdge: sizeEdgeVal
-              };
-              dataParsed[i].relationWithSecondField.push(relation);
-              let colorNodeFinal = $scope.visParams.firstNodeColor;
-
-              if (dataParsed[i].nodeColorValue !== 'default') {
-                colorNodeFinal = dataParsed[i].nodeColorValue;
-              }
-
-              i++; // Return the node totally built
-
-              const nodeReturn = {
-                id: i,
-                key: bucket[firstFirstBucketId],
-                color: colorNodeFinal,
-                shape: $scope.visParams.shapeFirstNode,
-                value: value,
-                font: {
-                  color: $scope.visParams.labelColor
-                }
-              }; // If activated, show the labels
-
-              if ($scope.visParams.showLabels) {
-                nodeReturn.label = bucket[firstFirstBucketId];
-              } // If activated, show the popups
-
-
-              if ($scope.visParams.showPopup) {
-                nodeReturn.title = getTooltipTitle(primaryNodeTermName, bucket[firstFirstBucketId], nodeSizeTermName, nodeReturn.value);
-              }
-
-              return nodeReturn;
-            } else if (result.length === 1) {
-              // we already have this node id in dataNodes, so update with new info
-              const dataParsedNodeExist = result[0];
-              let sizeEdgeVal = 0.1;
-
-              if (edgeSizeId) {
-                sizeEdgeVal = bucket[edgeSizeId];
-              }
-
-              const relation = {
-                keyRelation: bucket[secondBucketId],
-                countMetric: bucket[nodeSizeId],
-                widthOfEdge: sizeEdgeVal
-              };
-              dataParsedNodeExist.relationWithSecondField.push(relation);
-              return undefined;
-            }
-          }); // BUILDING EDGES
-          // Clean "undefinded" in the array
-
-          dataNodes = dataNodes.filter(Boolean);
-          const dataEdges = []; // Iterate parsed nodes
-
-          for (let n = 0; n < dataParsed.length; n++) {
-            // Obtain id of the node
-            const NodoFrom = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataNodes, function (e) {
-              return e.key === dataParsed[n].keyNode;
-            });
-
-            if (NodoFrom.length === 0) {
-              console.log('Network Plugin Error: Node not found');
-            } else if (NodoFrom.length === 1) {
-              const idFrom = NodoFrom[0].id; // Iterate relations that have with the second field selected
-
-              for (let p = 0; p < dataParsed[n].relationWithSecondField.length; p++) {
-                // Iterate again the nodes
-                for (let z = 0; z < dataParsed.length; z++) {
-                  // Check that we don't compare the same node
-                  if (dataParsed[n] !== dataParsed[z]) {
-                    const NodoTo = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataNodes, function (e) {
-                      return e.key === dataParsed[z].keyNode;
-                    });
-
-                    if (NodoTo.length === 0) {
-                      console.log('Network Plugin Error: Node not found');
-                    } else if (NodoTo.length === 1) {
-                      const idTo = NodoTo[0].id; // Have relation?
-
-                      const sameRelation = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataParsed[z].relationWithSecondField, function (e) {
-                        return e.keyRelation === dataParsed[n].relationWithSecondField[p].keyRelation;
-                      });
-
-                      if (sameRelation.length === 1) {
-                        // Nodes have a relation, creating the edge
-                        const edgeExist = jquery__WEBPACK_IMPORTED_MODULE_3___default.a.grep(dataEdges, function (e) {
-                          return e.to === idFrom && e.from === idTo || e.to === idTo && e.from === idFrom;
-                        });
-
-                        if (edgeExist.length === 0) {
-                          // The size of the edge is the total of the common
-                          const sizeEdgeTotal = sameRelation[0].widthOfEdge + dataParsed[n].relationWithSecondField[p].widthOfEdge;
-                          const edge = {
-                            from: idFrom,
-                            to: idTo,
-                            value: sizeEdgeTotal
-                          };
-                          dataEdges.push(edge);
-                        }
-                      }
-                    } else {
-                      console.log('Network Plugin Error: Multiples nodes with same id found');
-                    }
-                  }
-                }
-              }
-            } else {
-              console.log('Network Plugin Error: Multiples nodes with same id found');
-            }
-          } // Creation of the network
-
-
-          const container = document.getElementById(networkId); // Set the Height
-          // container.style.height = String(container.getBoundingClientRect().height);
-          // container.height = String(container.getBoundingClientRect().height);
-          // Set the Data
-
-          const data = {
-            nodes: dataNodes,
-            edges: dataEdges
-          }; // Set the Options
-
-          const options = {
-            // height: container.getBoundingClientRect().height.toString(),
-            physics: {
-              barnesHut: {
-                gravitationalConstant: $scope.visParams.gravitationalConstant,
-                springConstant: $scope.visParams.springConstant,
-                springLength: 500
-              }
-            },
-            edges: {
-              arrows: {
-                to: {
-                  enabled: $scope.visParams.displayArrow,
-                  scaleFactor: $scope.visParams.scaleArrow,
-                  type: $scope.visParams.shapeArrow
-                }
-              },
-              arrowStrikethrough: false,
-              smooth: {
-                type: $scope.visParams.smoothType
-              },
-              scaling: {
-                min: $scope.visParams.minEdgeSize,
-                max: $scope.visParams.maxEdgeSize
-              }
-            },
-            interaction: {
-              hideEdgesOnDrag: true,
-              hover: true,
-              tooltipDelay: 100
-            },
-            nodes: {
-              physics: $scope.visParams.nodePhysics,
-              scaling: {
-                min: $scope.visParams.minNodeSize,
-                max: $scope.visParams.maxNodeSize
-              }
-            },
-            layout: {
-              improvedLayout: false
-            },
-            manipulation: {
-              enabled: true
-            }
-          };
-          console.log('Network Plugin: Create network now');
-          const network = new vis_network__WEBPACK_IMPORTED_MODULE_2__["Network"](container, data, options);
-          network.on('afterDrawing', function () {
-            jquery__WEBPACK_IMPORTED_MODULE_3___default()('#' + loadingId).hide(); // Draw the color legend if Node Color is activated
-
-            if (colorBucketId && $scope.visParams.showColorLegend) {
-              $scope.drawColorLegend(usedColors, colorDicc);
-            }
-          });
-        } else {
-          $scope.errorNodeNodeRelation();
-        }
-      });
-    }
-  }); //   class KbnNetworkError {
-  //     constructor(message) {
-  //       this.message = message;
-  //     }
-  //   }
-  //   const getConfig = (...args) => config.get(...args);
-  //   handlebars.registerHelper('encodeURIComponent', encodeURIComponent);
-  //   // controller methods
-  //   const createTemplateContext = function (column, row, totalHits, table) {
-  //     // inject column value references
-  //     const templateContext = { total: totalHits };
-  //     _.forEach(column.template.paramsCols, function (templateParamCol) {
-  //       templateContext[`col${templateParamCol}`] = row[templateParamCol].value;
-  //     });
-  //     // inject column total references
-  //     _.forEach(column.template.paramsTotals, function (templateParamTotal) {
-  //       if (table.columns[templateParamTotal].total === undefined) {
-  //         table.columns[templateParamTotal].total = computeColumnTotal(templateParamTotal, column.template.totalFunc, table);
-  //       }
-  //       templateContext[`total${templateParamTotal}`] = table.columns[templateParamTotal].total;
-  //     });
-  //     return templateContext;
-  //   };
-  //   const findSplitColIndex = function (table) {
-  //     if (table !== null) {
-  //       return _.findIndex(table.columns, col => col.aggConfig.schema === 'splitcols');
-  //     }
-  //     else {
-  //       return -1;
-  //     }
-  //   };
-  //   const getRealColIndex = function (colIndex, splitColIndex) {
-  //     if (splitColIndex !== -1 && colIndex >= splitColIndex && $scope.vis.params.computedColsPerSplitCol) {
-  //       return colIndex + 1;
-  //     }
-  //     else {
-  //       return colIndex;
-  //     }
-  //   };
-  //   const getOriginalColIndex = function (colIndex, splitColIndex) {
-  //     if (splitColIndex !== -1 && colIndex > splitColIndex && $scope.vis.params.computedColsPerSplitCol) {
-  //       return colIndex - 1;
-  //     }
-  //     else {
-  //       return colIndex;
-  //     }
-  //   };
-  //   const findColIndexByTitle = function (columns, colTitle, input, inputType, splitColIndex) {
-  //     let columnIndex = -1;
-  //     for (let i = 0; i < columns.length; i++) {
-  //       if (columns[i].title === colTitle) {
-  //         columnIndex = i;
-  //         break;
-  //       }
-  //     }
-  //     if (columnIndex !== -1) {
-  //       return getOriginalColIndex(columnIndex, splitColIndex);
-  //     }
-  //     else {
-  //       throw new KbnNetworkError(`Column with label '${colTitle}' does not exist, in ${inputType}: ${input}`);
-  //     }
-  //   };
-  //   const createFormula = function (inputFormula, formulaType, splitColIndex, columns, totalFunc) {
-  //     if (!inputFormula) {
-  //       return undefined;
-  //     }
-  //     let realFormula = inputFormula;
-  //     // convert col[0] syntax to col0 syntax
-  //     realFormula = realFormula.replace(/col\[(\d+)\]/g, 'col$1');
-  //     // convert col['colTitle'] syntax to col0 syntax
-  //     realFormula = realFormula.replace(/col\['([^\]]+)'\]/g, (match, colTitle) => 'col' + findColIndexByTitle(columns, colTitle, inputFormula, formulaType, splitColIndex));
-  //     // set the right column index, depending splitColIndex
-  //     const colRefRegex = /col(\d+)/g;
-  //     realFormula = realFormula.replace(colRefRegex, (match, colIndex) => 'col' + getRealColIndex(parseInt(colIndex), splitColIndex));
-  //     // extract formula param cols
-  //     const formulaParamsCols = [];
-  //     const currentCol = columns.length;
-  //     let regexMatch;
-  //     while ((regexMatch = colRefRegex.exec(realFormula)) !== null) {
-  //       let colIndex = parseInt(regexMatch[1]);
-  //       if (colIndex >= currentCol) {
-  //         colIndex = getOriginalColIndex(colIndex, splitColIndex);
-  //         throw new KbnNetworkError(`Column number ${colIndex} does not exist, in ${formulaType}: ${inputFormula}`);
-  //       }
-  //       formulaParamsCols.push(colIndex);
-  //     }
-  //     // convert total[0] syntax to total0 syntax
-  //     realFormula = realFormula.replace(/total\[(\d+)\]/g, 'total$1');
-  //     // convert total['colTitle'] syntax to total0 syntax
-  //     realFormula = realFormula.replace(/total\['([^\]]+)'\]/g, (match, colTitle) => 'total' + findColIndexByTitle(columns, colTitle, inputFormula, formulaType, splitColIndex));
-  //     // set the right total index, depending splitColIndex
-  //     const totalRefRegex = /total(\d+)/g;
-  //     realFormula = realFormula.replace(totalRefRegex, (match, colIndex) => 'total' + getRealColIndex(parseInt(colIndex), splitColIndex));
-  //     // add 'row' param for functions that require whole row
-  //     realFormula = realFormula.replace(/(col)\s*\(/g, '$1(row, ');
-  //     realFormula = realFormula.replace(/(sumSplitCols)\s*\(/g, '$1(row');
-  //     // check 'sumSplitCols/countSplitCols' functions condition
-  //     if ((realFormula.indexOf('sumSplitCols') !== -1 || realFormula.indexOf('countSplitCols') !== -1) && splitColIndex === -1) {
-  //       throw new KbnNetworkError(`sumSplitCols() and countSplitCols() functions must be used with a "Split cols" bucket, in ${formulaType}: ${inputFormula}`);
-  //     }
-  //     // extract formula param totals
-  //     const formulaParamsTotals = [];
-  //     while ((regexMatch = totalRefRegex.exec(realFormula)) !== null) {
-  //       let colIndex = parseInt(regexMatch[1]);
-  //       if (colIndex >= currentCol) {
-  //         colIndex = getOriginalColIndex(colIndex, splitColIndex);
-  //         throw new KbnNetworkError(`Column number ${colIndex} does not exist, in ${formulaType}: ${inputFormula}`);
-  //       }
-  //       formulaParamsTotals.push(colIndex);
-  //     }
-  //     // create formula parser with custom functions
-  //     const parser = new Parser();
-  //     parser.functions.now = function () {
-  //       return Date.now();
-  //     };
-  //     parser.functions.indexOf = function (strOrArray, searchValue, fromIndex) {
-  //       return strOrArray.indexOf(searchValue, fromIndex);
-  //     };
-  //     parser.functions.lastIndexOf = function (strOrArray, searchValue, fromIndex) {
-  //       if (fromIndex) {
-  //         return strOrArray.lastIndexOf(searchValue, fromIndex);
-  //       }
-  //       else {
-  //         return strOrArray.lastIndexOf(searchValue);
-  //       }
-  //     };
-  //     parser.functions.replace = function (str, substr, newSubstr) {
-  //       return str.replace(substr, newSubstr);
-  //     };
-  //     parser.functions.replaceRegexp = function (str, regexp, newSubstr) {
-  //       return str.replace(new RegExp(regexp, 'g'), newSubstr);
-  //     };
-  //     parser.functions.search = function (str, regexp) {
-  //       return str.search(regexp);
-  //     };
-  //     parser.functions.substring = function (str, indexStart, indexEnd) {
-  //       return str.substring(indexStart, indexEnd);
-  //     };
-  //     parser.functions.toLowerCase = function (str) {
-  //       return str.toLowerCase();
-  //     };
-  //     parser.functions.toUpperCase = function (str) {
-  //       return str.toUpperCase();
-  //     };
-  //     parser.functions.trim = function (str) {
-  //       return str.trim();
-  //     };
-  //     parser.functions.encodeURIComponent = function (str) {
-  //       return encodeURIComponent(str);
-  //     };
-  //     parser.functions.sort = function (array, compareFunction) {
-  //       if (!Array.isArray(array)) {
-  //         array = [array];
-  //       }
-  //       return array.sort(compareFunction);
-  //     };
-  //     parser.functions.uniq = function (array) {
-  //       if (!Array.isArray(array)) {
-  //         array = [array];
-  //       }
-  //       return _.uniq(array);
-  //     };
-  //     parser.functions.isArray = function (value) {
-  //       return Array.isArray(value);
-  //     };
-  //     parser.functions.col = function (row, colRef, defaultValue) {
-  //       try {
-  //         let colIndex = colRef;
-  //         if (typeof colRef === 'string') {
-  //           colIndex = findColIndexByTitle(columns, colRef, inputFormula, formulaType, splitColIndex);
-  //         }
-  //         if (colIndex < currentCol) {
-  //           colIndex = getRealColIndex(colIndex, splitColIndex);
-  //           const colValue = row[colIndex].value;
-  //           return colValue !== undefined ? colValue : defaultValue;
-  //         }
-  //         else {
-  //           return defaultValue;
-  //         }
-  //       }
-  //       catch (e) {
-  //         return defaultValue;
-  //       }
-  //     };
-  //     parser.functions.sumSplitCols = function (row) {
-  //       let splitCol = splitColIndex;
-  //       let sum = 0;
-  //       while (splitCol < currentCol && columns[splitCol].formula === undefined) {
-  //         sum += row[splitCol].value;
-  //         splitCol++;
-  //       }
-  //       return sum;
-  //     };
-  //     parser.functions.countSplitCols = function () {
-  //       let splitCol = splitColIndex;
-  //       let count = 0;
-  //       while (splitCol < currentCol && columns[splitCol].formula === undefined) {
-  //         count++;
-  //         splitCol++;
-  //       }
-  //       return count;
-  //     };
-  //     // parse formula and return final formula object
-  //     try {
-  //       return {
-  //         expression: parser.parse(realFormula),
-  //         paramsCols: formulaParamsCols,
-  //         paramsTotals: formulaParamsTotals,
-  //         totalFunc: totalFunc,
-  //         formulaType: formulaType,
-  //         inputFormula: inputFormula
-  //       };
-  //     }
-  //     catch (e) {
-  //       throw new KbnNetworkError(`${e.message}, invalid expression in ${formulaType}: ${inputFormula}`);
-  //     }
-  //   };
-  //   const computeFormulaValue = function (formula, row, totalHits, table, cellValue) {
-  //     try {
-  //       const formulaParams = { total: totalHits, row: row, value: cellValue };
-  //       // inject column value references
-  //       _.forEach(formula.paramsCols, function (formulaParamCol) {
-  //         formulaParams[`col${formulaParamCol}`] = row[formulaParamCol].value;
-  //       });
-  //       // inject column total references
-  //       _.forEach(formula.paramsTotals, function (formulaParamTotal) {
-  //         if (table.columns[formulaParamTotal].total === undefined) {
-  //           table.columns[formulaParamTotal].total = computeColumnTotal(formulaParamTotal, formula.totalFunc, table);
-  //         }
-  //         formulaParams[`total${formulaParamTotal}`] = table.columns[formulaParamTotal].total;
-  //       });
-  //       const value = formula.expression.evaluate(formulaParams);
-  //       return value;
-  //     }
-  //     catch (e) {
-  //       throw new KbnNetworkError(`${e.message}, invalid expression in ${formula.formulaType}: ${formula.inputFormula}`);
-  //     }
-  //   };
-  //   const createTemplate = function (computedColumn, splitColIndex, columns, totalFunc) {
-  //     if (!computedColumn.applyTemplate) {
-  //       return undefined;
-  //     }
-  //     // convert old col.i.value syntax and manage 'split cols' case
-  //     let realTemplate = computedColumn.template.replace(/col\.(\d+)\.value\s*\}\}/g, 'col$1}}');
-  //     // convert col[0] syntax to col0 syntax
-  //     realTemplate = realTemplate.replace(/col\[(\d+)\]\s*\}\}/g, 'col$1}}');
-  //     // convert col['colTitle'] syntax to col0 syntax
-  //     realTemplate = realTemplate.replace(/col\['([^\]]+)'\]\s*\}\}/g, (match, colTitle) => 'col' + findColIndexByTitle(columns, colTitle, computedColumn.template, 'template', splitColIndex) + '}}');
-  //     // set the right column index, depending splitColIndex
-  //     const colRefRegex = /col(\d+)\s*\}\}/g;
-  //     realTemplate = realTemplate.replace(colRefRegex, (match, colIndex) => 'col' + getRealColIndex(parseInt(colIndex), splitColIndex) + '}}');
-  //     // add template param cols
-  //     const templateParamsCols = [];
-  //     let regexMatch;
-  //     while ((regexMatch = colRefRegex.exec(realTemplate)) !== null) {
-  //       const colIndex = parseInt(regexMatch[1]);
-  //       templateParamsCols.push(colIndex);
-  //     }
-  //     // convert total[0] syntax to total0 syntax
-  //     realTemplate = realTemplate.replace(/total\[(\d+)\]\s*\}\}/g, 'total$1}}');
-  //     // convert total['colTitle'] syntax to total0 syntax
-  //     realTemplate = realTemplate.replace(/total\['([^\]]+)'\]\s*\}\}/g, (match, colTitle) => 'total' + findColIndexByTitle(columns, colTitle, computedColumn.template, 'template', splitColIndex) + '}}');
-  //     // set the right total index, depending splitColIndex
-  //     const totalRefRegex = /total(\d+)\s*\}\}/g;
-  //     realTemplate = realTemplate.replace(totalRefRegex, (match, colIndex) => 'total' + getRealColIndex(parseInt(colIndex), splitColIndex) + '}}');
-  //     // add template param totals
-  //     const templateParamsTotals = [];
-  //     while ((regexMatch = totalRefRegex.exec(realTemplate)) !== null) {
-  //       const colIndex = parseInt(regexMatch[1]);
-  //       templateParamsTotals.push(colIndex);
-  //     }
-  //     // return final template object
-  //     return {
-  //       compiledTemplate: handlebars.compile(realTemplate),
-  //       paramsCols: templateParamsCols,
-  //       paramsTotals: templateParamsTotals,
-  //       totalFunc: totalFunc
-  //     };
-  //   };
-  //   const renderCell = function (contentType) {
-  //     let result = this.column.fieldFormatter.convert(this.value);
-  //     if (this.templateContext !== undefined) {
-  //       this.templateContext.value = result;
-  //       result = this.column.template.compiledTemplate(this.templateContext);
-  //     }
-  //     if (contentType !== 'html') {
-  //       result = result.replace(/<(?:.|\n)*?>/gm, '');
-  //     }
-  //     else {
-  //       result = { 'markup': result, 'class': this.column.dataAlignmentClass };
-  //     }
-  //     return result;
-  //   };
-  //   /** create a new data table column for specified computed column */
-  //   const createColumn = function (computedColumn, index, totalHits, splitColIndex, columns, showTotal, totalFunc, aggs) {
-  //     const fieldFormats = getFormatService();
-  //     const FieldFormat = fieldFormats.getType(computedColumn.format);
-  //     const fieldFormatParamsByFormat = {
-  //       'string': {},
-  //       'number': { pattern: computedColumn.pattern },
-  //       'date': { pattern: computedColumn.datePattern }
-  //     };
-  //     const fieldFormatParams = fieldFormatParamsByFormat[computedColumn.format];
-  //     const aggSchema = (computedColumn.format === 'number') ? 'metric' : 'bucket';
-  //     const aggType = (computedColumn.format === 'number') ? 'count' : 'filter';
-  //     // create new column object
-  //     const newColumn = {
-  //       id: `computed-col-${index}`,
-  //       aggConfig: aggs.createAggConfig({ schema: aggSchema, type: aggType }),
-  //       title: computedColumn.label,
-  //       fieldFormatter: new FieldFormat(fieldFormatParams, getConfig),
-  //       dataAlignmentClass: `text-${computedColumn.alignment}`,
-  //       formula: createFormula(computedColumn.formula, 'computed column', splitColIndex, columns, totalFunc),
-  //       template: createTemplate(computedColumn, splitColIndex, columns, totalFunc),
-  //       cellComputedCssFormula: createFormula(computedColumn.cellComputedCss, 'Cell computed CSS', splitColIndex, columns, totalFunc)
-  //     };
-  //     // check that computed column formula is defined
-  //     if (newColumn.formula === undefined) {
-  //       throw new KbnNetworkError(`Computed column 'Formula' is required`);
-  //     }
-  //     // remove the created AggConfig from real aggs
-  //     aggs.aggs.pop();
-  //     // define aggConfig identifiers
-  //     newColumn.aggConfig.id = `1.computed-column-${index}`;
-  //     newColumn.aggConfig.key = `computed-column-${index}`;
-  //     // if computed column formula is just a simple column reference (ex: col0), then copy its aggConfig to get filtering feature
-  //     const simpleColRefMatch = newColumn.formula.expression.toString().match(/^\s*col(\d+)\s*$/);
-  //     if (simpleColRefMatch) {
-  //       const simpleColRefIndex = simpleColRefMatch[1];
-  //       const simpleColRef = columns[simpleColRefIndex];
-  //       if (simpleColRef.aggConfig.isFilterable()) {
-  //         newColumn.aggConfig = simpleColRef.aggConfig;
-  //         newColumn.meta = simpleColRef.meta;
-  //       }
-  //     }
-  //     // add alignment options
-  //     if (computedColumn.applyAlignmentOnTotal) {
-  //       newColumn.totalAlignmentClass = newColumn.dataAlignmentClass;
-  //     }
-  //     if (computedColumn.applyAlignmentOnTitle) {
-  //       newColumn.titleAlignmentClass = newColumn.dataAlignmentClass;
-  //     }
-  //     // process "computeTotalUsingFormula" option
-  //     if (showTotal && computedColumn.computeTotalUsingFormula) {
-  //       const totalFormula = computedColumn.formula.replace(/col(\[|\d+)/g, 'total$1')
-  //         .replace(/col\s*\(\s*(\d+)[^)]*\)/g, 'total$1');
-  //       newColumn.totalFormula = createFormula(totalFormula, 'computed total', splitColIndex, columns, totalFunc);
-  //     }
-  //     // add "total" formatter function
-  //     newColumn.totalFormatter = function (contentType) {
-  //       return function (value) {
-  //         const self = { value: value, column: newColumn };
-  //         if (computedColumn.applyTemplate && computedColumn.applyTemplateOnTotal) {
-  //           self.templateContext = { total: totalHits };
-  //         }
-  //         return renderCell.call(self, contentType);
-  //       };
-  //     };
-  //     return newColumn;
-  //   };
-  //   const createComputedCell = function (column, row, totalHits, table) {
-  //     const value = computeFormulaValue(column.formula, row, totalHits, table);
-  //     const parent = row.length > 0 && row[row.length - 1];
-  //     const newCell = new AggConfigResult(column.aggConfig, parent, value, value);
-  //     newCell.column = column;
-  //     if (column.template !== undefined) {
-  //       newCell.templateContext = createTemplateContext(column, row, totalHits, table);
-  //     }
-  //     if (column.cellComputedCssFormula !== undefined) {
-  //       newCell.cssStyle = computeFormulaValue(column.cellComputedCssFormula, row, totalHits, table, value);
-  //     }
-  //     newCell.toString = renderCell;
-  //     return newCell;
-  //   };
-  //   const addComputedColumnToTables = function (tables, index, newColumn, totalHits) {
-  //     _.forEach(tables, function (table) {
-  //       if (table.tables) {
-  //         addComputedColumnToTables(table.tables, index, newColumn, totalHits);
-  //         return;
-  //       }
-  //       // add new computed column and its cells
-  //       newColumn = _.clone(newColumn);
-  //       table.columns.push(newColumn);
-  //       _.forEach(table.rows, function (row) {
-  //         const newCell = createComputedCell(newColumn, row, totalHits, table);
-  //         row.push(newCell);
-  //         row[newColumn.id] = newCell.value;
-  //       });
-  //       // compute total if totalFormula is present
-  //       if (newColumn.totalFormula) {
-  //         newColumn.total = computeFormulaValue(newColumn.totalFormula, null, totalHits, table);
-  //       }
-  //     });
-  //   };
-  //   const processLinesComputedFilter = function (tables, linesComputedFilterFormula, totalHits) {
-  //     return _.filter(tables, function (table) {
-  //       if (table.tables) {
-  //         table.tables = processLinesComputedFilter(table.tables, linesComputedFilterFormula, totalHits);
-  //         return table.tables.length > 0;
-  //       }
-  //       table.rows = _.filter(table.rows, function (row) {
-  //         return computeFormulaValue(linesComputedFilterFormula, row, totalHits, table);
-  //       });
-  //       return table.rows.length > 0;
-  //     });
-  //   };
-  //   const processRowsComputedCss = function (table, rowsComputedCssFormula, totalHits) {
-  //     if (table.tables) {
-  //       table.tables.forEach(function (subTable) {
-  //         processRowsComputedCss(subTable, rowsComputedCssFormula, totalHits);
-  //       });
-  //     }
-  //     else {
-  //       table.rows.forEach(function (row) {
-  //         row.cssStyle = computeFormulaValue(rowsComputedCssFormula, row, totalHits, table);
-  //       });
-  //     }
-  //   };
-  //   const processRowsComputedOptions = function (tableGroups, columns, params, splitColIndex, totalHits) {
-  //     // process lines computed filter
-  //     if (params.linesComputedFilter) {
-  //       const linesComputedFilterFormula = createFormula(params.linesComputedFilter, 'Rows computed filter', splitColIndex, columns, params.totalFunc);
-  //       tableGroups.tables = processLinesComputedFilter(tableGroups.tables, linesComputedFilterFormula, totalHits);
-  //     }
-  //     // process rows computed CSS
-  //     if (params.rowsComputedCss) {
-  //       const rowsComputedCssFormula = createFormula(params.rowsComputedCss, 'Rows computed CSS', splitColIndex, columns, params.totalFunc);
-  //       processRowsComputedCss(tableGroups, rowsComputedCssFormula, totalHits);
-  //     }
-  //   };
-  //   const isInt = (item) => {
-  //     return /^ *[0-9]+ *$/.test(item);
-  //   };
-  //   const hideColumns = function (tables, hiddenColumns, splitColIndex) {
-  //     // recursively call sub-tables
-  //     _.forEach(tables, function (table) {
-  //       if (table.tables) {
-  //         hideColumns(table.tables, hiddenColumns, splitColIndex);
-  //         return;
-  //       }
-  //       if (splitColIndex !== -1 && table.rows.length > 0) {
-  //         table.refRowWithHiddenCols = _.clone(table.rows[0]);
-  //       }
-  //       // retrieve real col indices
-  //       let hiddenColumnIndices = _.map(hiddenColumns, function (item) {
-  //         try {
-  //           if (!isInt(item)) {
-  //             item = findColIndexByTitle(table.columns, item, item, 'hidden column', splitColIndex);
-  //           }
-  //           return getRealColIndex(parseInt(item), splitColIndex);
-  //         }
-  //         catch (e) {
-  //           return table.columns.length;
-  //         }
-  //       });
-  //       // sort from higher to lower index and keep uniq indices
-  //       hiddenColumnIndices = _.uniq(hiddenColumnIndices.sort((a, b) => b - a));
-  //       // remove hidden columns
-  //       _.forEach(hiddenColumnIndices, function (colToRemove) {
-  //         if (colToRemove < table.columns.length) {
-  //           table.columns.splice(colToRemove, 1);
-  //           _.forEach(table.rows, function (row) {
-  //             row.splice(colToRemove, 1);
-  //           });
-  //         }
-  //       });
-  //     });
-  //   };
-  //   const shouldShowPagination = function (tables, perPage) {
-  //     return tables.some(function (table) {
-  //       if (table.tables) {
-  //         return shouldShowPagination(table.tables, perPage);
-  //       }
-  //       else {
-  //         return table.rows.length > perPage;
-  //       }
-  //     });
-  //   };
-  //   const rowContainsFilterTerm = function (row, termToFind, filterCaseSensitive) {
-  //     return row.some(function (cell) {
-  //       if (cell.column && cell.column.id === 'add-row-numbers-col') {
-  //         return false;
-  //       }
-  //       let cellValue = cell.toString();
-  //       if (typeof cellValue === 'string') {
-  //         if (!filterCaseSensitive) {
-  //           cellValue = cellValue.toLowerCase();
-  //         }
-  //         return cellValue.includes(termToFind);
-  //       }
-  //       return false;
-  //     });
-  //   };
-  //   const filterTableRows = function (tables, activeFilterTerms, filterCaseSensitive) {
-  //     const filteredTables = _.map(tables, (table) => _.clone(table));
-  //     return _.filter(filteredTables, function (table) {
-  //       if (table.tables) {
-  //         table.tables = filterTableRows(table.tables, activeFilterTerms, filterCaseSensitive);
-  //         return table.tables.length > 0;
-  //       }
-  //       else {
-  //         table.rows = _.filter(table.rows, function (row) {
-  //           return activeFilterTerms.every(function (filterTerm) {
-  //             return rowContainsFilterTerm(row, filterTerm, filterCaseSensitive);
-  //           });
-  //         });
-  //         return table.rows.length > 0;
-  //       }
-  //     });
-  //   };
-  //   const findFirstDataTable = function (table) {
-  //     if (table.tables) {
-  //       if (table.tables.length > 0) {
-  //         return findFirstDataTable(table.tables[0]);
-  //       }
-  //       else {
-  //         return null;
-  //       }
-  //     }
-  //     else {
-  //       return table;
-  //     }
-  //   };
-  //   const DEFAULT_METRIC_VALUE = 0;
-  //   const splitCols = function (table, splitColIndex, totalHits) {
-  //     // process only real tables (with rows)
-  //     if (table.tables) {
-  //       _.forEach(table.tables, function (table) {
-  //         splitCols(table, splitColIndex, totalHits);
-  //       });
-  //       return;
-  //     }
-  //     // define ref row for computed columns
-  //     const refRowForComputedColumn = (table.refRowWithHiddenCols !== undefined) ? table.refRowWithHiddenCols : _.clone(table.rows[0]);
-  //     for (let i = 0; i < refRowForComputedColumn.length; i++) {
-  //       const cell = refRowForComputedColumn[i];
-  //       if (cell.column !== undefined) {
-  //         refRowForComputedColumn[i] = createComputedCell(cell.column, refRowForComputedColumn, totalHits, table);
-  //       }
-  //       else if (cell.type === 'metric') {
-  //         refRowForComputedColumn[i] = new AggConfigResult(cell.aggConfig, null, DEFAULT_METRIC_VALUE, DEFAULT_METRIC_VALUE, cell.filters);
-  //       }
-  //     }
-  //     // initialize new column headers
-  //     const newCols = [];
-  //     for (let i = 0; i < splitColIndex; i++) {
-  //       newCols.push(table.columns[i]);
-  //     }
-  //     // compute new table rows
-  //     const newRows = [];
-  //     let newRow = null;
-  //     const newColNamePrefixes = [];
-  //     const newColDefaultMetrics = [];
-  //     const metricsCount = table.columns.length - 1 - splitColIndex;
-  //     _.forEach(table.rows, function (row) {
-  //       // detect if we should create a row
-  //       let createNewRow = (newRow === null);
-  //       if (!createNewRow) {
-  //         for (let i = 0; i < splitColIndex; i++) {
-  //           if (row[i].value !== newRow[i].value) {
-  //             createNewRow = true;
-  //             break;
-  //           }
-  //         }
-  //       }
-  //       // create a new row
-  //       if (createNewRow) {
-  //         newRow = [];
-  //         for (let i = 0; i < splitColIndex; i++) {
-  //           newRow.push(row[i]);
-  //           newRow[table.columns[i].id] = row[i].value;
-  //         }
-  //         newRows.push(newRow);
-  //       }
-  //       // split col
-  //       const rowSplitColValue = row[splitColIndex].toString();
-  //       let newColIndex = _.indexOf(newColNamePrefixes, rowSplitColValue);
-  //       // create new col
-  //       if (newColIndex === -1) {
-  //         newColNamePrefixes.push(rowSplitColValue);
-  //         newColIndex = newColNamePrefixes.length - 1;
-  //         for (let i = splitColIndex + 1; i < row.length; i++) {
-  //           const newCol = _.clone(table.columns[i]);
-  //           newCol.title = metricsCount > 1 ? rowSplitColValue + ' - ' + newCol.title : rowSplitColValue;
-  //           newCols.push(newCol);
-  //           let newColDefaultMetric;
-  //           if (newCol.formula === undefined) {
-  //             newColDefaultMetric = new AggConfigResult(row[i].aggConfig, null, DEFAULT_METRIC_VALUE, DEFAULT_METRIC_VALUE, row[i].filters);
-  //           }
-  //           else {
-  //             newColDefaultMetric = createComputedCell(newCol, refRowForComputedColumn, totalHits, table);
-  //           }
-  //           newColDefaultMetrics.push(newColDefaultMetric);
-  //           for (let j = 0; j < newRows.length - 1; j++) {
-  //             newRows[j].push(newColDefaultMetric);
-  //           }
-  //         }
-  //       }
-  //       // add new col metrics
-  //       for (let i = 0; i < metricsCount; i++) {
-  //         newRow[splitColIndex + (newColIndex * metricsCount) + i] = row[splitColIndex + 1 + i];
-  //       }
-  //       for (let i = 0; i < newColDefaultMetrics.length; i++) {
-  //         const targetCol = splitColIndex + i;
-  //         if (newRow[targetCol] === undefined) {
-  //           newRow[targetCol] = newColDefaultMetrics[i];
-  //         }
-  //       }
-  //     });
-  //     // update rows
-  //     table.rows = newRows;
-  //     // update cols
-  //     table.columns = newCols;
-  //   };
-  //   const notifyError = function (errorMessage) {
-  //     const title = $scope.vis.type.title + ' Error';
-  //     getNotifications().toasts.addDanger({ title, text: errorMessage });
-  //   };
-  //   const colToStringWithHighlightResults = function (initialToString, scope, contentType) {
-  //     let result = initialToString.call(this, contentType);
-  //     if ($scope.filterHighlightRegex !== null && contentType === 'html' && (!this.column || this.column.id !== 'add-row-numbers-col')) {
-  //       if (typeof result === 'string') {
-  //         result = { 'markup': result };
-  //       }
-  //       if (result.markup.indexOf('<span') === -1) {
-  //         result.markup = `<span>${result.markup}</span>`;
-  //       }
-  //       result.markup = result.markup.replace(/>([^<>]+)</g, function (match, group) {
-  //         return '>' + group.replace($scope.filterHighlightRegex, '<mark>$1</mark>') + '<';
-  //       });
-  //     }
-  //     return result;
-  //   };
-  //   const addRowNumberColumn = function (table, aggs) {
-  //     if (table.tables) {
-  //       table.tables.forEach(subTable => addRowNumberColumn(subTable, aggs));
-  //     }
-  //     else {
-  //       // add row number column in first position
-  //       const fieldFormats = getFormatService();
-  //       const fieldFormat = fieldFormats.getInstance('number');
-  //       const newColumn = {
-  //         id: 'add-row-numbers-col',
-  //         aggConfig: aggs.createAggConfig({ schema: 'bucket', type: 'filter' }),
-  //         title: '#',
-  //         fieldFormatter: fieldFormat,
-  //         dataAlignmentClass: 'text-left'
-  //       };
-  //       table.columns.unshift(newColumn);
-  //       let i = 1;
-  //       // add row number cells in first position
-  //       table.rows.forEach(row => {
-  //         const newCell = new AggConfigResult(newColumn.aggConfig, null, i, i);
-  //         newCell.column = newColumn;
-  //         newCell.toString = renderCell;
-  //         row.unshift(newCell);
-  //         row[newColumn.id] = newCell.value;
-  //         ++i;
-  //       });
-  //     }
-  //   };
-  //   // filter scope methods
-  //   $scope.doFilter = function () {
-  //     $scope.activeFilter = $scope.vis.filterInput;
-  //   };
-  //   $scope.enableFilterInput = function () {
-  //     $scope.filterInputEnabled = true;
-  //   };
-  //   $scope.disableFilterInput = function () {
-  //     $scope.filterInputEnabled = false;
-  //     $scope.activeFilter = $scope.vis.filterInput = '';
-  //   };
-  //   $scope.showFilterInput = function () {
-  //     return !$scope.visState.params.filterBarHideable || $scope.filterInputEnabled;
-  //   };
-  //   // init controller state
-  //   $scope.activeFilter = $scope.vis.filterInput = '';
-  //   const uiStateSort = ($scope.uiState) ? $scope.uiState.get('vis.params.sort') : {};
-  //   _.assign($scope.visParams.sort, uiStateSort);
-  //   $scope.sort = $scope.visParams.sort;
-  //   $scope.$watchCollection('sort', function (newSort) {
-  //     $scope.uiState.set('vis.params.sort', newSort);
-  //   });
-  //   /** process filter submitted by user and refresh displayed table */
-  //   const processFilterBarAndRefreshTable = function () {
-  //     if ($scope.tableGroups !== undefined) {
-  //       let tableGroups = $scope.esResponse;
-  //       const params = $scope.visParams;
-  //       // init filterInput & filterHighlightRegex
-  //       if ($scope.vis.filterInput === undefined) {
-  //         $scope.vis.filterInput = $scope.activeFilter;
-  //       }
-  //       $scope.filterHighlightRegex = null;
-  //       // process filter bar
-  //       if (params.showFilterBar && $scope.showFilterInput() && $scope.activeFilter !== undefined && $scope.activeFilter !== '') {
-  //         // compute activeFilterTerms
-  //         const activeFilter = params.filterCaseSensitive ? $scope.activeFilter : $scope.activeFilter.toLowerCase();
-  //         let activeFilterTerms = [activeFilter];
-  //         if (params.filterTermsSeparately) {
-  //           activeFilterTerms = activeFilter.replace(/ +/g, ' ').split(' ');
-  //         }
-  //         // compute filterHighlightRegex
-  //         if (params.filterHighlightResults) {
-  //           const filterHighlightRegexString = '(' + _.sortBy(activeFilterTerms, term => term.length * -1).map(term => _.escapeRegExp(term)).join('|') + ')';
-  //           $scope.filterHighlightRegex = new RegExp(filterHighlightRegexString, 'g' + (!params.filterCaseSensitive ? 'i' : ''));
-  //         }
-  //         // filter table rows to display
-  //         tableGroups = _.clone(tableGroups);
-  //         tableGroups.tables = filterTableRows(tableGroups.tables, activeFilterTerms, params.filterCaseSensitive);
-  //       }
-  //       // check if there are rows to display
-  //       const hasSomeRows = tableGroups.tables.some(function haveRows(table) {
-  //         if (table.tables) return table.tables.some(haveRows);
-  //         return table.rows.length > 0;
-  //       });
-  //       // set conditional css classes
-  //       const showPagination = hasSomeRows && params.perPage && shouldShowPagination(tableGroups.tables, params.perPage);
-  //       $scope.tableVisContainerClass = {
-  //         'hide-pagination': !showPagination,
-  //         'hide-export-links': params.hideExportLinks,
-  //         'striped-rows': params.stripedRows
-  //       };
-  //       $scope.isDarkTheme = getConfig('theme:darkMode');
-  //       // update $scope
-  //       $scope.hasSomeRows = hasSomeRows;
-  //       if (hasSomeRows) {
-  //         $scope.tableGroups = tableGroups;
-  //       }
-  //       // force render if 'Highlight results' is enabled
-  //       if (hasSomeRows && $scope.filterHighlightRegex !== null) {
-  //         tableGroups.tables.some(function cloneFirstRow(table) {
-  //           if (table.tables) return table.tables.some(cloneFirstRow);
-  //           if (table.rows.length > 0) {
-  //             const clonedRow = _.clone(table.rows[0]);
-  //             table.columns.forEach(function (column) {
-  //               if (table.rows[0][column.id] !== undefined) {
-  //                 clonedRow[column.id] = table.rows[0][column.id];
-  //               }
-  //             });
-  //             table.rows[0] = clonedRow;
-  //             return true;
-  //           }
-  //           return false;
-  //         });
-  //       }
-  //     }
-  //   };
-  //   // listen activeFilter field changes, to filter results
-  //   $scope.$watch('activeFilter', processFilterBarAndRefreshTable);
-  //   /**
-  //    * Recreate the entire table when:
-  //    * - the underlying data changes (esResponse)
-  //    * - one of the view options changes (vis.params)
-  //    */
-  //   $scope.$watch('renderComplete', function watchRenderComplete() {
-  //     try {
-  //       if ($scope.esResponse && $scope.esResponse.newResponse) {
-  //         // init tableGroups
-  //         $scope.hasSomeRows = null;
-  //         $scope.tableGroups = null;
-  //         $scope.esResponse.newResponse = false;
-  //         const tableGroups = $scope.esResponse;
-  //         const totalHits = $scope.esResponse.totalHits;
-  //         const aggs = $scope.esResponse.aggs;
-  //         const params = $scope.visParams;
-  //         // validate that 'Split cols' is the last bucket
-  //         const firstTable = findFirstDataTable(tableGroups);
-  //         let splitColIndex = findSplitColIndex(firstTable);
-  //         if (splitColIndex !== -1) {
-  //           const lastBucketIndex = _.findLastIndex(firstTable.columns, col => col.aggConfig.type.type === 'buckets');
-  //           if (splitColIndex !== lastBucketIndex) {
-  //             throw new KbnNetworkError('"Split cols" bucket must be the last one');
-  //           }
-  //         }
-  //         // no data to display
-  //         if (totalHits === 0 || firstTable === null) {
-  //           $scope.hasSomeRows = false;
-  //           return;
-  //         }
-  //         // process 'Split cols' bucket: transform rows to cols
-  //         if (splitColIndex !== -1 && !params.computedColsPerSplitCol) {
-  //           splitCols(tableGroups, splitColIndex, totalHits);
-  //         }
-  //         // add computed columns
-  //         _.forEach(params.computedColumns, function (computedColumn, index) {
-  //           if (computedColumn.enabled) {
-  //             const newColumn = createColumn(computedColumn, index, totalHits, splitColIndex, firstTable.columns, params.showTotal, params.totalFunc, aggs);
-  //             addComputedColumnToTables(tableGroups.tables, index, newColumn, totalHits);
-  //           }
-  //         });
-  //         // process rows computed options : lines computed filter and rows computed CSS (no split cols)
-  //         if (splitColIndex === -1) {
-  //           processRowsComputedOptions(tableGroups, firstTable.columns, params, splitColIndex, totalHits);
-  //         }
-  //         // remove hidden columns
-  //         if (params.hiddenColumns) {
-  //           hideColumns(tableGroups.tables, params.hiddenColumns.split(','), splitColIndex);
-  //         }
-  //         // process 'Split cols' bucket: transform rows to cols
-  //         if (splitColIndex !== -1 && params.computedColsPerSplitCol) {
-  //           splitColIndex = findSplitColIndex(firstTable);
-  //           splitCols(tableGroups, splitColIndex, totalHits);
-  //         }
-  //         // process rows computed options : lines computed filter and rows computed CSS (split cols)
-  //         if (splitColIndex !== -1) {
-  //           processRowsComputedOptions(tableGroups, firstTable.columns, params, -1, totalHits);
-  //         }
-  //         // add total label
-  //         if (params.showTotal && params.totalLabel !== '') {
-  //           tableGroups.tables.forEach(function setTotalLabel(table) {
-  //             if (table.tables)
-  //               table.tables.forEach(setTotalLabel);
-  //             else
-  //               table.totalLabel = params.totalLabel;
-  //           });
-  //         }
-  //         // add row number column
-  //         if (params.addRowNumberColumn) {
-  //           addRowNumberColumn(tableGroups, aggs);
-  //         }
-  //         // prepare filter highlight results rendering
-  //         if (params.showFilterBar && params.filterHighlightResults) {
-  //           tableGroups.tables.forEach(function redefineColToString(table) {
-  //             if (table.tables) {
-  //               table.tables.forEach(redefineColToString);
-  //             }
-  //             else {
-  //               table.rows.forEach(function (row) {
-  //                 row.forEach(function (col) {
-  //                   col.toString = colToStringWithHighlightResults.bind(col, col.toString, $scope);
-  //                 });
-  //               });
-  //             }
-  //           });
-  //         }
-  //         // process filter bar
-  //         processFilterBarAndRefreshTable();
-  //       }
-  //       $scope.renderComplete();
-  //     }
-  //     catch (e) {
-  //       if (e instanceof KbnNetworkError) {
-  //         notifyError(e.message);
-  //       }
-  //       else {
-  //         throw e;
-  //       }
-  //     }
-  //   });
-}
-
-
-
-/***/ }),
-
-/***/ "./public/kbn-network-vis.html":
-/*!*************************************!*\
-  !*** ./public/kbn-network-vis.html ***!
-  \*************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("<div id=\"errorHtml\"></div>\n<div ng-controller=\"KbnNetworkVisController\" class=\"network-vis\" id=\"net_{{$id}}\">\n</div>\n<div id=\"loading_{{$id}}\">\n  <div class=\"loading_msg\">\n    <p><strong>Loading network...</strong><i class=\"fa fa-clock-o\" aria-hidden=\"true\"></i></p>\n  </div>\n</div>\n\n<!--div ng-controller=\"KbnNetworkVisController\" class=\"table-vis kbn-network-vis\" ng-class=\"{'theme-dark': isDarkTheme}\">\n\n  <div ng-show=\"visState.params.showFilterBar && tableGroups && (hasSomeRows || activeFilter !== '')\" class=\"filterBar\">\n    <div ng-hide=\"showFilterInput()\" align=\"right\">\n      <a ng-click=\"enableFilterInput()\" class=\"filterText\" i18n-id=\"visTypeTable.vis.filterLink\" i18n-default-message=\"Filter\"></a>\n    </div>\n\n    <div class=\"kuiLocalSearch\" ng-show=\"showFilterInput()\" style=\"width:{{visState.params.filterBarWidth}}\">\n      <div class=\"kuiLocalSearchAssistedInput\">\n        <input type=\"text\" ng-model=\"vis.filterInput\" ng-keyup=\"(visState.params.filterAsYouType || $event.keyCode == 13) && doFilter()\" placeholder=\"{{ ::'visTypeTable.vis.filterPlaceholder' | i18n: {defaultMessage: 'Filter...'} }}\" class=\"kuiLocalSearchInput filterInput\" autocomplete=\"off\" aria-label=\"{{ ::'visTypeTable.vis.filterAriaLabel' | i18n: {defaultMessage: 'Filter input'} }}\">\n      </div>\n      <button ng-click=\"doFilter()\" aria-label=\"Filter\" class=\"kuiButton kuiLocalSearchButton filterButton\" ng-disabled=\"visState.params.filterAsYouType\">\n        <span class=\"fa fa-search\" aria-hidden=\"true\"></span>\n      </button>\n      <button ng-click=\"disableFilterInput()\" ng-show=\"visState.params.filterBarHideable\" aria-label=\"Hide\" class=\"kuiButton kuiButton--danger filterButton\">\n        <span aria-hidden=\"true\" class=\"fa fa-times\"></span>\n      </button>\n    </div>\n  </div>\n\n  <div ng-if=\"!hasSomeRows && hasSomeRows !== null\" class=\"visError\">\n    <div class=\"euiText euiText--extraSmall euiTextColor euiTextColor--subdued\">\n      <icon type=\"'visualizeApp'\" size=\"'m'\" color=\"'subdued'\"></icon>\n\n      <br>\n      <br>\n\n      <p\n        i18n-id=\"visTypeTable.vis.noResultsFoundTitle\"\n        i18n-default-message=\"No results found\">\n      </p>\n    </div>\n  </div>\n\n  <div ng-if=\"hasSomeRows\" class=\"table-vis-container\" ng-class=\"tableVisContainerClass\" data-test-subj=\"tableVis\">\n    <kbn-network-agg-table-group\n      filter=\"vis.API.events.filter\"\n      group=\"tableGroups\"\n      export-title=\"visState.title\"\n      per-page=\"visState.params.perPage\"\n      sort=\"sort\"\n      show-total=\"visState.params.showTotal\"\n      total-func=\"visState.params.totalFunc\">\n    </kbn-network-agg-table-group>\n  </div>\n</div-->\n");
-
-/***/ }),
-
 /***/ "./public/kbn-network-vis.js":
 /*!***********************************!*\
   !*** ./public/kbn-network-vis.js ***!
@@ -20839,23 +18127,21 @@ __webpack_require__.r(__webpack_exports__);
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "kbnNetworkVisTypeDefinition", function() { return kbnNetworkVisTypeDefinition; });
-/* harmony import */ var _kbn_i18n__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @kbn/i18n */ "@kbn/i18n");
-/* harmony import */ var _kbn_i18n__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_kbn_i18n__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _osd_i18n__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @osd/i18n */ "@osd/i18n");
+/* harmony import */ var _osd_i18n__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_osd_i18n__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var _src_plugins_data_public__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../src/plugins/data/public */ "plugin/data/public");
 /* harmony import */ var _src_plugins_data_public__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_data_public__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _src_plugins_vis_default_editor_public__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../src/plugins/vis_default_editor/public */ "plugin/visDefaultEditor/public");
 /* harmony import */ var _src_plugins_vis_default_editor_public__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_vis_default_editor_public__WEBPACK_IMPORTED_MODULE_2__);
-/* harmony import */ var _kbn_network_vis_html__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./kbn-network-vis.html */ "./public/kbn-network-vis.html");
-/* harmony import */ var _vis_controller__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./vis_controller */ "./public/vis_controller.ts");
-/* harmony import */ var _data_load_kbn_network_request_handler__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./data_load/kbn-network-request-handler */ "./public/data_load/kbn-network-request-handler.js");
-/* harmony import */ var _data_load_kbn_network_response_handler__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./data_load/kbn-network-response-handler */ "./public/data_load/kbn-network-response-handler.js");
-/* harmony import */ var _components_kbn_network_vis_options_lazy__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./components/kbn_network_vis_options_lazy */ "./public/components/kbn_network_vis_options_lazy.tsx");
-/* harmony import */ var _src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../../src/plugins/visualizations/public */ "plugin/visualizations/public");
-/* harmony import */ var _src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_8___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_8__);
-/* harmony import */ var _index_scss__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./index.scss */ "./public/index.scss");
-/* harmony import */ var _index_scss__WEBPACK_IMPORTED_MODULE_9___default = /*#__PURE__*/__webpack_require__.n(_index_scss__WEBPACK_IMPORTED_MODULE_9__);
-/* harmony import */ var _images_icon_network_svg__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./images/icon-network.svg */ "./public/images/icon-network.svg");
-/* harmony import */ var _images_icon_network_svg__WEBPACK_IMPORTED_MODULE_10___default = /*#__PURE__*/__webpack_require__.n(_images_icon_network_svg__WEBPACK_IMPORTED_MODULE_10__);
+/* harmony import */ var _components_network_vis__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./components/network_vis */ "./public/components/network_vis.tsx");
+/* harmony import */ var _data_load_kbn_network_request_handler__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./data_load/kbn-network-request-handler */ "./public/data_load/kbn-network-request-handler.js");
+/* harmony import */ var _components_kbn_network_vis_options_lazy__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./components/kbn_network_vis_options_lazy */ "./public/components/kbn_network_vis_options_lazy.tsx");
+/* harmony import */ var _src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../../src/plugins/visualizations/public */ "plugin/visualizations/public");
+/* harmony import */ var _src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_6__);
+/* harmony import */ var _index_scss__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./index.scss */ "./public/index.scss");
+/* harmony import */ var _index_scss__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(_index_scss__WEBPACK_IMPORTED_MODULE_7__);
+/* harmony import */ var _images_icon_network_svg__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./images/icon-network.svg */ "./public/images/icon-network.svg");
+/* harmony import */ var _images_icon_network_svg__WEBPACK_IMPORTED_MODULE_8___default = /*#__PURE__*/__webpack_require__.n(_images_icon_network_svg__WEBPACK_IMPORTED_MODULE_8__);
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -20883,25 +18169,21 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-
- // define the visType object, which kibana will use to display and configure new Vis object of this type.
-
-function kbnNetworkVisTypeDefinition(core, context) {
+function kbnNetworkVisTypeDefinition() {
   return {
-    type: 'table',
     name: 'kbn_network',
-    title: _kbn_i18n__WEBPACK_IMPORTED_MODULE_0__["i18n"].translate('visTypeKbnNetwork.visTitle', {
+    title: _osd_i18n__WEBPACK_IMPORTED_MODULE_0__["i18n"].translate('visTypeKbnNetwork.visTitle', {
       defaultMessage: 'Network'
     }),
-    icon: _images_icon_network_svg__WEBPACK_IMPORTED_MODULE_10___default.a,
-    description: _kbn_i18n__WEBPACK_IMPORTED_MODULE_0__["i18n"].translate('visTypeKbnNetwork.visDescription', {
+    icon: _images_icon_network_svg__WEBPACK_IMPORTED_MODULE_8___default.a,
+    description: _osd_i18n__WEBPACK_IMPORTED_MODULE_0__["i18n"].translate('visTypeKbnNetwork.visDescription', {
       defaultMessage: 'Network plugin for visualizing data as networks'
     }),
-    visualization: Object(_vis_controller__WEBPACK_IMPORTED_MODULE_4__["getKbnNetworkVisualizationController"])(core, context),
     getSupportedTriggers: () => {
-      return [_src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_8__["VIS_EVENT_TO_TRIGGER"].filter];
+      return [_src_plugins_visualizations_public__WEBPACK_IMPORTED_MODULE_6__["VIS_EVENT_TO_TRIGGER"].filter];
     },
     visConfig: {
+      component: _components_network_vis__WEBPACK_IMPORTED_MODULE_3__["NetworkVis"],
       defaults: {
         showLabels: true,
         showPopup: true,
@@ -20916,7 +18198,9 @@ function kbnNetworkVisTypeDefinition(core, context) {
         shapeArrow: 'arrow',
         smoothType: 'continuous',
         scaleArrow: 1,
+        maxCutMetricSizeNode: 5000,
         minCutMetricSizeNode: 0,
+        maxCutMetricSizeEdge: 5000,
         maxNodeSize: 80,
         minNodeSize: 8,
         maxEdgeSize: 20,
@@ -20924,11 +18208,10 @@ function kbnNetworkVisTypeDefinition(core, context) {
         springConstant: 0.001,
         gravitationalConstant: -35000,
         labelColor: '#000000'
-      },
-      template: _kbn_network_vis_html__WEBPACK_IMPORTED_MODULE_3__["default"]
+      }
     },
     editorConfig: {
-      optionsTemplate: _components_kbn_network_vis_options_lazy__WEBPACK_IMPORTED_MODULE_7__["KbnNetworkOptions"],
+      optionsTemplate: _components_kbn_network_vis_options_lazy__WEBPACK_IMPORTED_MODULE_5__["KbnNetworkOptions"],
       schemas: new _src_plugins_vis_default_editor_public__WEBPACK_IMPORTED_MODULE_2__["Schemas"]([{
         group: _src_plugins_data_public__WEBPACK_IMPORTED_MODULE_1__["AggGroupNames"].Metrics,
         name: 'size_node',
@@ -20979,352 +18262,16 @@ function kbnNetworkVisTypeDefinition(core, context) {
         group: _src_plugins_data_public__WEBPACK_IMPORTED_MODULE_1__["AggGroupNames"].Buckets,
         name: 'colornode',
         title: "Node Color",
-        mustBeFirst: 'true',
         max: 1,
         aggFilter: ['terms']
       }])
     },
-    requestHandler: _data_load_kbn_network_request_handler__WEBPACK_IMPORTED_MODULE_5__["kbnNetworkRequestHandler"],
-    responseHandler: _data_load_kbn_network_response_handler__WEBPACK_IMPORTED_MODULE_6__["kbnNetworkResponseHandler"],
+    requestHandler: _data_load_kbn_network_request_handler__WEBPACK_IMPORTED_MODULE_4__["kbnNetworkRequestHandler"],
     hierarchicalData: vis => {
       return true;
     }
   };
 }
-
-/***/ }),
-
-/***/ "./public/paginated_table/paginated_table.html":
-/*!*****************************************************!*\
-  !*** ./public/paginated_table/paginated_table.html ***!
-  \*****************************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("<paginate\n  ng-if=\"sortedRows.length\"\n  list=\"sortedRows\"\n  per-page-prop=\"perPage\"\n  class=\"kbnAggTable\">\n  <div class=\"kbnAggTable__paginated\">\n    <table class=\"table table-condensed\">\n      <thead data-test-subj=\"network-paginated-table-header\">\n        <tr>\n          <th\n            scope=\"col\"\n            ng-repeat=\"col in columns\"\n            ng-click=\"networkPaginatedTable.sortColumn($index)\"\n            kbn-accessible-click\n            tabindex=\"0\"\n            class=\"{{ col.class }} {{ col.titleAlignmentClass }}\">\n            <span ng-bind=\"::col.title\"></span>\n\n            <icon-tip\n              ng-if=\"col.info\"\n              content=\"'{{ col.info }}'\"\n            ></icon-tip>\n\n            <i\n              ng-if=\"col.sortable !== false\"\n              class=\"fa\"\n              ng-class=\"{\n                'fa-sort-asc': networkPaginatedTable.sort.columnIndex === $index && networkPaginatedTable.sort.direction === 'asc',\n                'fa-sort-desc': networkPaginatedTable.sort.columnIndex === $index && networkPaginatedTable.sort.direction === 'desc',\n                'fa-sort': networkPaginatedTable.sort.columnIndex !== $index || networkPaginatedTable.sort.direction === null\n              }\">\n            </i>\n          </th>\n        </tr>\n      </thead>\n      <tbody\n        data-test-subj=\"network-paginated-table-body\"\n        kbn-network-rows=\"page\"\n        kbn-network-rows-min=\"networkPaginatedTable.rowsToShow(perPage, page.length)\"\n      >\n      </tbody>\n      <tfoot ng-if=\"showTotal\">\n        <tr>\n          <th scope=\"col\" ng-repeat=\"col in columns\" class=\"numeric-value {{ col.totalAlignmentClass }}\">{{col.total}}</th>\n        </tr>\n      </tfoot>\n    </table>\n  </div>\n\n  <!-- auto-inserted by the paginate directive... -->\n  <!-- <paginate-controls></paginate-controls> -->\n  <div class=\"pagination-container\" ng-transclude></div>\n</paginate>\n");
-
-/***/ }),
-
-/***/ "./public/paginated_table/paginated_table.js":
-/*!***************************************************!*\
-  !*** ./public/paginated_table/paginated_table.js ***!
-  \***************************************************/
-/*! exports provided: NetworkPaginatedTable */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NetworkPaginatedTable", function() { return NetworkPaginatedTable; });
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ "lodash");
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _data_load_agg_config_result__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../data_load/agg_config_result */ "./public/data_load/agg_config_result.js");
-/* harmony import */ var _paginated_table_html__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./paginated_table.html */ "./public/paginated_table/paginated_table.html");
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-
-
-function NetworkPaginatedTable($filter) {
-  const orderBy = $filter('orderBy');
-  return {
-    restrict: 'E',
-    template: _paginated_table_html__WEBPACK_IMPORTED_MODULE_2__["default"],
-    transclude: true,
-    scope: {
-      table: '=',
-      rows: '=',
-      columns: '=',
-      linkToTop: '=',
-      perPage: '=?',
-      showBlankRows: '=?',
-      sortHandler: '=?',
-      sort: '=?',
-      showSelector: '=?',
-      showTotal: '=',
-      totalFunc: '=',
-      filter: '='
-    },
-    controllerAs: 'networkPaginatedTable',
-    controller: function ($scope) {
-      const self = this;
-      self.sort = {
-        columnIndex: null,
-        direction: null
-      };
-
-      self.sortColumn = function (colIndex, sortDirection = 'asc') {
-        const col = $scope.columns[colIndex];
-        if (!col) return;
-        if (col.sortable === false) return;
-
-        if (self.sort.columnIndex === colIndex) {
-          const directions = {
-            null: 'asc',
-            'asc': 'desc',
-            'desc': null
-          };
-          sortDirection = directions[self.sort.direction];
-        }
-
-        self.sort.columnIndex = colIndex;
-        self.sort.direction = sortDirection;
-
-        if ($scope.sort) {
-          lodash__WEBPACK_IMPORTED_MODULE_0___default.a.assign($scope.sort, self.sort);
-        }
-      };
-
-      self.rowsToShow = function (numRowsPerPage, actualNumRowsOnThisPage) {
-        if ($scope.showBlankRows === false) {
-          return actualNumRowsOnThisPage;
-        } else {
-          return numRowsPerPage;
-        }
-      };
-
-      function valueGetter(row) {
-        let value = row[self.sort.columnIndex];
-        if (value && value.value != null) value = value.value;
-        if (typeof value === 'boolean') value = value ? 0 : 1;
-        if (value instanceof _data_load_agg_config_result__WEBPACK_IMPORTED_MODULE_1__["default"] && value.valueOf() === null) value = false;
-        return value;
-      } // Set the sort state if it is set
-
-
-      if ($scope.sort && $scope.sort.columnIndex !== null) {
-        self.sortColumn($scope.sort.columnIndex, $scope.sort.direction);
-      }
-
-      function resortRows() {
-        const newSort = $scope.sort;
-
-        if (newSort && !lodash__WEBPACK_IMPORTED_MODULE_0___default.a.isEqual(newSort, self.sort)) {
-          self.sortColumn(newSort.columnIndex, newSort.direction);
-        }
-
-        if (!$scope.rows || !$scope.columns) {
-          $scope.sortedRows = false;
-          return;
-        }
-
-        const sort = self.sort;
-
-        if (sort.direction == null) {
-          $scope.sortedRows = $scope.rows.slice(0);
-        } else {
-          $scope.sortedRows = orderBy($scope.rows, valueGetter, sort.direction === 'desc');
-        }
-      } // update the sortedRows result
-
-
-      $scope.$watchMulti(['rows', 'columns', '[]sort', '[]networkPaginatedTable.sort'], resortRows);
-    }
-  };
-}
-
-/***/ }),
-
-/***/ "./public/paginated_table/rows.js":
-/*!****************************************!*\
-  !*** ./public/paginated_table/rows.js ***!
-  \****************************************/
-/*! exports provided: KbnNetworkRows */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "KbnNetworkRows", function() { return KbnNetworkRows; });
-/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! jquery */ "jquery");
-/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! lodash */ "lodash");
-/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _data_load_agg_config_result__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../data_load/agg_config_result */ "./public/data_load/agg_config_result.js");
-/* harmony import */ var _table_cell_filter_html__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./table_cell_filter.html */ "./public/paginated_table/table_cell_filter.html");
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-
-
-
-function KbnNetworkRows($compile) {
-  return {
-    restrict: 'A',
-    link: function ($scope, $el, attr) {
-      function addCell($tr, contents, iColumn, row) {
-        function createCell() {
-          return jquery__WEBPACK_IMPORTED_MODULE_0___default()(document.createElement('td'));
-        }
-
-        function createFilterableCell(aggConfigResult) {
-          const $template = jquery__WEBPACK_IMPORTED_MODULE_0___default()(_table_cell_filter_html__WEBPACK_IMPORTED_MODULE_3__["default"]);
-          $template.addClass('kbnKbnNetworkCellFilter__hover');
-          const scope = $scope.$new();
-
-          scope.onFilterClick = (event, negate) => {
-            // Don't add filter if a link was clicked.
-            if (jquery__WEBPACK_IMPORTED_MODULE_0___default()(event.target).is('a')) {
-              return;
-            }
-
-            $scope.filter({
-              data: [{
-                table: $scope.table,
-                row: $scope.rows.findIndex(r => r === row),
-                column: iColumn,
-                value: aggConfigResult.value
-              }],
-              negate
-            });
-          };
-
-          return $compile($template)(scope);
-        }
-
-        let $cell;
-        let $cellContent;
-
-        if (contents instanceof _data_load_agg_config_result__WEBPACK_IMPORTED_MODULE_2__["default"]) {
-          const field = contents.aggConfig.getField();
-          const isCellContentFilterable = contents.aggConfig.isFilterable() && (!field || field.filterable);
-
-          if (isCellContentFilterable) {
-            $cell = createFilterableCell(contents);
-            $cellContent = $cell.find('[data-cell-content]');
-          } else {
-            $cell = $cellContent = createCell();
-          }
-
-          if (row.cssStyle !== undefined || contents.cssStyle !== undefined) {
-            let cssStyle = row.cssStyle !== undefined ? row.cssStyle : '';
-
-            if (contents.cssStyle !== undefined) {
-              cssStyle += '; ' + contents.cssStyle;
-            }
-
-            $cell.attr('style', cssStyle);
-
-            if (cssStyle.indexOf('background') !== -1) {
-              $cell.addClass('cell-custom-background-hover');
-            }
-          } // An AggConfigResult can "enrich" cell contents by applying a field formatter,
-          // which we want to do if possible.
-
-
-          contents = contents.toString('html');
-        } else {
-          $cell = $cellContent = createCell();
-        }
-
-        if (lodash__WEBPACK_IMPORTED_MODULE_1___default.a.isObject(contents)) {
-          if (contents.class) {
-            $cellContent.addClass(contents.class);
-          }
-
-          if (contents.scope) {
-            $cellContent = $compile($cellContent.prepend(contents.markup))(contents.scope);
-          } else {
-            $cellContent.prepend(contents.markup);
-          }
-
-          if (contents.attr) {
-            $cellContent.attr(contents.attr);
-          }
-        } else {
-          if (contents === '') {
-            $cellContent.prepend('&nbsp;');
-          } else {
-            $cellContent.prepend(contents);
-          }
-        }
-
-        $tr.append($cell);
-      }
-
-      function maxRowSize(max, row) {
-        return Math.max(max, row.length);
-      }
-
-      $scope.$watchMulti([attr.kbnNetworkRows, attr.kbnNetworkRowsMin], function (vals) {
-        let rows = vals[0];
-        const min = vals[1];
-        $el.empty();
-        if (!Array.isArray(rows)) rows = [];
-        const width = rows.reduce(maxRowSize, 0);
-
-        if (isFinite(min) && rows.length < min) {
-          // clone the rows so that we can add elements to it without upsetting the original
-          rows = lodash__WEBPACK_IMPORTED_MODULE_1___default.a.clone(rows); // crate the empty row which will be pushed into the row list over and over
-
-          const emptyRow = new Array(width); // fill the empty row with values
-
-          lodash__WEBPACK_IMPORTED_MODULE_1___default.a.times(width, function (i) {
-            emptyRow[i] = '';
-          }); // push as many empty rows into the row array as needed
-
-
-          lodash__WEBPACK_IMPORTED_MODULE_1___default.a.times(min - rows.length, function () {
-            rows.push(emptyRow);
-          });
-        }
-
-        rows.forEach(function (row) {
-          const $tr = jquery__WEBPACK_IMPORTED_MODULE_0___default()(document.createElement('tr')).appendTo($el);
-          $scope.columns.forEach(function (column, iColumn) {
-            const value = row[iColumn];
-            addCell($tr, value, iColumn, row);
-          });
-        });
-      });
-    }
-  };
-}
-
-/***/ }),
-
-/***/ "./public/paginated_table/table_cell_filter.html":
-/*!*******************************************************!*\
-  !*** ./public/paginated_table/table_cell_filter.html ***!
-  \*******************************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("<td>\n  <div\n    data-cell-content\n    class=\"kbnTableCellFilter__hover\"\n  >\n    <span class=\"kbnTableCellFilter\" style=\"background-color: inherit;\">\n      <span\n        data-test-subj=\"filterForCellValue\"\n        ng-click=\"onFilterClick($event, false)\"\n        class=\"fa fa-search-plus\"\n        tooltip=\"{{ ::'visTypeTable.directives.tableCellFilter.filterForValueTooltip' | i18n: {defaultMessage: 'Filter for value'} }}\"\n        tooltip-append-to-body=\"1\"\n      ></span>\n\n      <span\n        ng-click=\"onFilterClick($event, true)\"\n        class=\"fa fa-search-minus\"\n        tooltip=\"{{ ::'visTypeTable.directives.tableCellFilter.filterOutValueTooltip' | i18n: {defaultMessage: 'Filter out value'} }}\"\n        tooltip-append-to-body=\"1\"\n      ></span>\n    </span>\n  </div>\n</td>\n");
 
 /***/ }),
 
@@ -21362,6 +18309,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
  */
 
 
+/** @internal */
 
 /** @internal */
 class KbnNetworkPlugin {
@@ -21373,18 +18321,18 @@ class KbnNetworkPlugin {
     this.initializerContext = initializerContext;
   }
 
-  async setup(core, {
-    visualizations
-  }) {
-    visualizations.createBaseVisualization(Object(_kbn_network_vis__WEBPACK_IMPORTED_MODULE_0__["kbnNetworkVisTypeDefinition"])(core, this.initializerContext));
+  async setup(core, _ref) {
+    let {
+      visualizations
+    } = _ref;
+    visualizations.createReactVisualization(Object(_kbn_network_vis__WEBPACK_IMPORTED_MODULE_0__["kbnNetworkVisTypeDefinition"])());
   }
 
-  start(core, {
-    data,
-    kibanaLegacy
-  }) {
+  start(core, _ref2) {
+    let {
+      data
+    } = _ref2;
     Object(_services__WEBPACK_IMPORTED_MODULE_1__["setFormatService"])(data.fieldFormats);
-    Object(_services__WEBPACK_IMPORTED_MODULE_1__["setKibanaLegacy"])(kibanaLegacy);
     Object(_services__WEBPACK_IMPORTED_MODULE_1__["setNotifications"])(core.notifications);
     Object(_services__WEBPACK_IMPORTED_MODULE_1__["setQueryService"])(data.query);
     Object(_services__WEBPACK_IMPORTED_MODULE_1__["setSearchService"])(data.search);
@@ -21398,23 +18346,21 @@ class KbnNetworkPlugin {
 /*!****************************!*\
   !*** ./public/services.ts ***!
   \****************************/
-/*! exports provided: getFormatService, setFormatService, getKibanaLegacy, setKibanaLegacy, getNotifications, setNotifications, getQueryService, setQueryService, getSearchService, setSearchService */
+/*! exports provided: getFormatService, setFormatService, getNotifications, setNotifications, getQueryService, setQueryService, getSearchService, setSearchService */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getFormatService", function() { return getFormatService; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setFormatService", function() { return setFormatService; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getKibanaLegacy", function() { return getKibanaLegacy; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setKibanaLegacy", function() { return setKibanaLegacy; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getNotifications", function() { return getNotifications; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setNotifications", function() { return setNotifications; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getQueryService", function() { return getQueryService; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setQueryService", function() { return setQueryService; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getSearchService", function() { return getSearchService; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setSearchService", function() { return setSearchService; });
-/* harmony import */ var _src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../src/plugins/kibana_utils/public */ "plugin/kibanaUtils/public");
-/* harmony import */ var _src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../src/plugins/opensearch_dashboards_utils/public */ "plugin/opensearchDashboardsUtils/public");
+/* harmony import */ var _src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_0__);
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -21434,313 +18380,67 @@ __webpack_require__.r(__webpack_exports__);
  * under the License.
  */
 
-const [getFormatService, setFormatService] = Object(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('table data.fieldFormats');
-const [getKibanaLegacy, setKibanaLegacy] = Object(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('table kibanaLegacy');
-const [getNotifications, setNotifications] = Object(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('Notifications');
-const [getQueryService, setQueryService] = Object(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('Query');
-const [getSearchService, setSearchService] = Object(_src_plugins_kibana_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('Search');
-
-/***/ }),
-
-/***/ "./public/table_vis_legacy_module.ts":
-/*!*******************************************!*\
-  !*** ./public/table_vis_legacy_module.ts ***!
-  \*******************************************/
-/*! exports provided: initTableVisLegacyModule */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "initTableVisLegacyModule", function() { return initTableVisLegacyModule; });
-/* harmony import */ var _kbn_network_vis_controller_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./kbn-network-vis-controller.js */ "./public/kbn-network-vis-controller.js");
-/* harmony import */ var _agg_table_agg_table__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./agg_table/agg_table */ "./public/agg_table/agg_table.js");
-/* harmony import */ var _agg_table_agg_table_group__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./agg_table/agg_table_group */ "./public/agg_table/agg_table_group.js");
-/* harmony import */ var _paginated_table_rows__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./paginated_table/rows */ "./public/paginated_table/rows.js");
-/* harmony import */ var _paginated_table_paginated_table__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./paginated_table/paginated_table */ "./public/paginated_table/paginated_table.js");
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-// @ts-ignore
- // @ts-ignore
-
- // @ts-ignore
-
- // @ts-ignore
-
- // @ts-ignore
-
-
-/** @internal */
-
-const initTableVisLegacyModule = angularIns => {
-  angularIns.controller('KbnNetworkVisController', _kbn_network_vis_controller_js__WEBPACK_IMPORTED_MODULE_0__["KbnNetworkVisController"]).directive('kbnNetworkAggTable', _agg_table_agg_table__WEBPACK_IMPORTED_MODULE_1__["KbnNetworkAggTable"]).directive('kbnNetworkAggTableGroup', _agg_table_agg_table_group__WEBPACK_IMPORTED_MODULE_2__["KbnNetworkAggTableGroup"]).directive('kbnNetworkRows', _paginated_table_rows__WEBPACK_IMPORTED_MODULE_3__["KbnNetworkRows"]).directive('networkPaginatedTable', _paginated_table_paginated_table__WEBPACK_IMPORTED_MODULE_4__["NetworkPaginatedTable"]);
-};
-
-/***/ }),
-
-/***/ "./public/vis_controller.ts":
-/*!**********************************!*\
-  !*** ./public/vis_controller.ts ***!
-  \**********************************/
-/*! exports provided: getKbnNetworkVisualizationController */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getKbnNetworkVisualizationController", function() { return getKbnNetworkVisualizationController; });
-/* harmony import */ var angular__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! angular */ "angular");
-/* harmony import */ var angular__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(angular__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! jquery */ "jquery");
-/* harmony import */ var jquery__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(jquery__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _get_inner_angular__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./get_inner_angular */ "./public/get_inner_angular.ts");
-/* harmony import */ var _services__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./services */ "./public/services.ts");
-/* harmony import */ var _table_vis_legacy_module__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./table_vis_legacy_module */ "./public/table_vis_legacy_module.ts");
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-/*
- * Licensed to Elasticsearch B.V. under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch B.V. licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-
-
-
-
-const innerAngularName = 'kibana/kbn_network_vis';
-function getKbnNetworkVisualizationController(core, context) {
-  var _temp;
-
-  return _temp = class KbnNetworkVisualizationController {
-    constructor(domeElement, vis) {
-      _defineProperty(this, "tableVisModule", void 0);
-
-      _defineProperty(this, "injector", void 0);
-
-      _defineProperty(this, "el", void 0);
-
-      _defineProperty(this, "vis", void 0);
-
-      _defineProperty(this, "$rootScope", null);
-
-      _defineProperty(this, "$scope", void 0);
-
-      _defineProperty(this, "$compile", void 0);
-
-      this.el = jquery__WEBPACK_IMPORTED_MODULE_1___default()(domeElement);
-      this.vis = vis;
-    }
-
-    getInjector() {
-      if (!this.injector) {
-        const mountpoint = document.createElement('div');
-        mountpoint.setAttribute('style', 'height: 100%; width: 100%;');
-        this.injector = angular__WEBPACK_IMPORTED_MODULE_0___default.a.bootstrap(mountpoint, [innerAngularName]);
-        this.el.append(mountpoint);
-      }
-
-      return this.injector;
-    }
-
-    async initLocalAngular() {
-      if (!this.tableVisModule) {
-        const [coreStart] = await core.getStartServices();
-        this.tableVisModule = Object(_get_inner_angular__WEBPACK_IMPORTED_MODULE_2__["getAngularModule"])(innerAngularName, coreStart, context);
-        Object(_table_vis_legacy_module__WEBPACK_IMPORTED_MODULE_4__["initTableVisLegacyModule"])(this.tableVisModule);
-      }
-    }
-
-    async render(esResponse, visParams) {
-      Object(_services__WEBPACK_IMPORTED_MODULE_3__["getKibanaLegacy"])().loadFontAwesome();
-      await this.initLocalAngular();
-      return new Promise(async (resolve, reject) => {
-        if (!this.$rootScope) {
-          const $injector = this.getInjector();
-          this.$rootScope = $injector.get('$rootScope');
-          this.$compile = $injector.get('$compile');
-        }
-
-        const updateScope = () => {
-          if (!this.$scope) {
-            return;
-          } // How things get into this $scope?
-          // To inject variables into this $scope there's the following pipeline of stuff to check:
-          // - visualize_embeddable => that's what the editor creates to wrap this Angular component
-          // - build_pipeline => it serialize all the params into an Angular template compiled on the fly
-          // - table_vis_fn => unserialize the params and prepare them for the final React/Angular bridge
-          // - visualization_renderer => creates the wrapper component for this controller and passes the params
-          //
-          // In case some prop is missing check into the top of the chain if they are available and check
-          // the list above that it is passing through
-
-
-          this.$scope.vis = this.vis;
-          this.$scope.visState = {
-            params: visParams,
-            title: visParams.title
-          };
-          this.$scope.esResponse = esResponse;
-          this.$scope.visParams = visParams;
-          this.$scope.renderComplete = resolve;
-          this.$scope.renderFailed = reject;
-          this.$scope.resize = Date.now();
-          this.$scope.$apply();
-        };
-
-        if (!this.$scope && this.$compile) {
-          this.$scope = this.$rootScope.$new();
-          this.$scope.uiState = this.vis.getUiState();
-          updateScope();
-          this.el.find('div').append(this.$compile(this.vis.type.visConfig.template)(this.$scope));
-          this.$scope.$apply();
-        } else {
-          updateScope();
-        }
-      });
-    }
-
-    destroy() {
-      if (this.$rootScope) {
-        this.$rootScope.$destroy();
-        this.$rootScope = null;
-      }
-    }
-
-  }, _temp;
-}
+const [getFormatService, setFormatService] = Object(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('table data.fieldFormats');
+const [getNotifications, setNotifications] = Object(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('Notifications');
+const [getQueryService, setQueryService] = Object(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('Query');
+const [getSearchService, setSearchService] = Object(_src_plugins_opensearch_dashboards_utils_public__WEBPACK_IMPORTED_MODULE_0__["createGetterSetter"])('Search');
 
 /***/ }),
 
 /***/ "@elastic/eui":
 /*!***********************************************!*\
-  !*** external "__kbnSharedDeps__.ElasticEui" ***!
+  !*** external "__osdSharedDeps__.ElasticEui" ***!
   \***********************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-module.exports = __kbnSharedDeps__.ElasticEui;
+module.exports = __osdSharedDeps__.ElasticEui;
 
 /***/ }),
 
-/***/ "@kbn/i18n":
+/***/ "@osd/i18n":
 /*!********************************************!*\
-  !*** external "__kbnSharedDeps__.KbnI18n" ***!
+  !*** external "__osdSharedDeps__.OsdI18n" ***!
   \********************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-module.exports = __kbnSharedDeps__.KbnI18n;
+module.exports = __osdSharedDeps__.OsdI18n;
 
 /***/ }),
 
-/***/ "@kbn/i18n/angular":
-/*!***************************************************!*\
-  !*** external "__kbnSharedDeps__.KbnI18nAngular" ***!
-  \***************************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-module.exports = __kbnSharedDeps__.KbnI18nAngular;
-
-/***/ }),
-
-/***/ "@kbn/i18n/react":
+/***/ "@osd/i18n/react":
 /*!*************************************************!*\
-  !*** external "__kbnSharedDeps__.KbnI18nReact" ***!
+  !*** external "__osdSharedDeps__.OsdI18nReact" ***!
   \*************************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-module.exports = __kbnSharedDeps__.KbnI18nReact;
-
-/***/ }),
-
-/***/ "angular":
-/*!********************************************!*\
-  !*** external "__kbnSharedDeps__.Angular" ***!
-  \********************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-module.exports = __kbnSharedDeps__.Angular;
-
-/***/ }),
-
-/***/ "jquery":
-/*!*******************************************!*\
-  !*** external "__kbnSharedDeps__.Jquery" ***!
-  \*******************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-module.exports = __kbnSharedDeps__.Jquery;
+module.exports = __osdSharedDeps__.OsdI18nReact;
 
 /***/ }),
 
 /***/ "lodash":
 /*!*******************************************!*\
-  !*** external "__kbnSharedDeps__.Lodash" ***!
+  !*** external "__osdSharedDeps__.Lodash" ***!
   \*******************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-module.exports = __kbnSharedDeps__.Lodash;
-
-/***/ }),
-
-/***/ "plugin/charts/public":
-/*!*********************************************!*\
-  !*** @kbn/bundleRef "plugin/charts/public" ***!
-  \*********************************************/
-/*! no static exports found */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-
-      __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/charts/public');
-      Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
-    
+module.exports = __osdSharedDeps__.Lodash;
 
 /***/ }),
 
 /***/ "plugin/data/common":
 /*!*******************************************!*\
-  !*** @kbn/bundleRef "plugin/data/common" ***!
+  !*** @osd/bundleRef "plugin/data/common" ***!
   \*******************************************/
 /*! no static exports found */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 
       __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/data/common');
+      var ns = __osdBundles__.get('plugin/data/common');
       Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
     
 
@@ -21748,14 +18448,14 @@ module.exports = __kbnSharedDeps__.Lodash;
 
 /***/ "plugin/data/public":
 /*!*******************************************!*\
-  !*** @kbn/bundleRef "plugin/data/public" ***!
+  !*** @osd/bundleRef "plugin/data/public" ***!
   \*******************************************/
 /*! no static exports found */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 
       __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/data/public');
+      var ns = __osdBundles__.get('plugin/data/public');
       Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
     
 
@@ -21763,59 +18463,29 @@ module.exports = __kbnSharedDeps__.Lodash;
 
 /***/ "plugin/inspector/public":
 /*!************************************************!*\
-  !*** @kbn/bundleRef "plugin/inspector/public" ***!
+  !*** @osd/bundleRef "plugin/inspector/public" ***!
   \************************************************/
 /*! no static exports found */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 
       __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/inspector/public');
+      var ns = __osdBundles__.get('plugin/inspector/public');
       Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
     
 
 /***/ }),
 
-/***/ "plugin/kibanaLegacy/public":
-/*!***************************************************!*\
-  !*** @kbn/bundleRef "plugin/kibanaLegacy/public" ***!
-  \***************************************************/
+/***/ "plugin/opensearchDashboardsUtils/public":
+/*!****************************************************************!*\
+  !*** @osd/bundleRef "plugin/opensearchDashboardsUtils/public" ***!
+  \****************************************************************/
 /*! no static exports found */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 
       __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/kibanaLegacy/public');
-      Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
-    
-
-/***/ }),
-
-/***/ "plugin/kibanaUtils/public":
-/*!**************************************************!*\
-  !*** @kbn/bundleRef "plugin/kibanaUtils/public" ***!
-  \**************************************************/
-/*! no static exports found */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-
-      __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/kibanaUtils/public');
-      Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
-    
-
-/***/ }),
-
-/***/ "plugin/share/public":
-/*!********************************************!*\
-  !*** @kbn/bundleRef "plugin/share/public" ***!
-  \********************************************/
-/*! no static exports found */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-
-      __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/share/public');
+      var ns = __osdBundles__.get('plugin/opensearchDashboardsUtils/public');
       Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
     
 
@@ -21823,14 +18493,14 @@ module.exports = __kbnSharedDeps__.Lodash;
 
 /***/ "plugin/visDefaultEditor/public":
 /*!*******************************************************!*\
-  !*** @kbn/bundleRef "plugin/visDefaultEditor/public" ***!
+  !*** @osd/bundleRef "plugin/visDefaultEditor/public" ***!
   \*******************************************************/
 /*! no static exports found */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 
       __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/visDefaultEditor/public');
+      var ns = __osdBundles__.get('plugin/visDefaultEditor/public');
       Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
     
 
@@ -21838,14 +18508,14 @@ module.exports = __kbnSharedDeps__.Lodash;
 
 /***/ "plugin/visualizations/public":
 /*!*****************************************************!*\
-  !*** @kbn/bundleRef "plugin/visualizations/public" ***!
+  !*** @osd/bundleRef "plugin/visualizations/public" ***!
   \*****************************************************/
 /*! no static exports found */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 
       __webpack_require__.r(__webpack_exports__);
-      var ns = __kbnBundles__.get('plugin/visualizations/public');
+      var ns = __osdBundles__.get('plugin/visualizations/public');
       Object.defineProperties(__webpack_exports__, Object.getOwnPropertyDescriptors(ns))
     
 
@@ -21853,12 +18523,12 @@ module.exports = __kbnSharedDeps__.Lodash;
 
 /***/ "react":
 /*!******************************************!*\
-  !*** external "__kbnSharedDeps__.React" ***!
+  !*** external "__osdSharedDeps__.React" ***!
   \******************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-module.exports = __kbnSharedDeps__.React;
+module.exports = __osdSharedDeps__.React;
 
 /***/ })
 

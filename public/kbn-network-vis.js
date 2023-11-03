@@ -20,21 +20,15 @@
 import { i18n } from '@osd/i18n';
 import { AggGroupNames } from '../../../src/plugins/data/public';
 import { Schemas } from '../../../src/plugins/vis_default_editor/public';
-
-import tableVisTemplate from './kbn-network-vis.html';
-import { getKbnNetworkVisualizationController } from './vis_controller';
+import { NetworkVis } from './components/network_vis';
 import { kbnNetworkRequestHandler } from './data_load/kbn-network-request-handler';
-import { kbnNetworkResponseHandler } from './data_load/kbn-network-response-handler';
 import { KbnNetworkOptions } from './components/kbn_network_vis_options_lazy';
 import { VIS_EVENT_TO_TRIGGER } from '../../../src/plugins/visualizations/public';
 import './index.scss'
 import image from './images/icon-network.svg';
 
-
-// define the visType object, which kibana will use to display and configure new Vis object of this type.
-export function kbnNetworkVisTypeDefinition(core, context) {
+export function kbnNetworkVisTypeDefinition() {
   return {
-    type: 'table',
     name: 'kbn_network',
     title: i18n.translate('visTypeKbnNetwork.visTitle', {
       defaultMessage: 'Network'
@@ -43,11 +37,11 @@ export function kbnNetworkVisTypeDefinition(core, context) {
     description: i18n.translate('visTypeKbnNetwork.visDescription', {
       defaultMessage: 'Network plugin for visualizing data as networks'
     }),
-    visualization: getKbnNetworkVisualizationController(core, context),
     getSupportedTriggers: () => {
       return [VIS_EVENT_TO_TRIGGER.filter];
     },
     visConfig: {
+      component: NetworkVis,
       defaults: {
         showLabels: true,
         showPopup: true,
@@ -73,7 +67,6 @@ export function kbnNetworkVisTypeDefinition(core, context) {
         gravitationalConstant: -35000,
         labelColor: '#000000',
       },
-      template: tableVisTemplate
     },
     editorConfig: {
       optionsTemplate: KbnNetworkOptions,
@@ -132,7 +125,6 @@ export function kbnNetworkVisTypeDefinition(core, context) {
       ])
     },
     requestHandler: kbnNetworkRequestHandler,
-    responseHandler: kbnNetworkResponseHandler,
     hierarchicalData: (vis) => {
       return true;
     }
